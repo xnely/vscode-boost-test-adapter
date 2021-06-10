@@ -8,6 +8,6 @@ You need to configure `boost-test-adapter.testExecutable` to point to the path o
 
 ## Features that not implemented yet
 
-- Debug the test.
+- ~~Debug the test.~~
 - Cancel the test.
 - Automatic configurations reloading.
