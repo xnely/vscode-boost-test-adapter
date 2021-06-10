@@ -1,18 +1,18 @@
 {
-  "name": "boost-test-adapter",
-  "version": "2.0.0",
-  "displayName": "Boost.Test Explorer",
-  "description": "Run your Boost.Test tests in the Sidebar of Visual Studio Code",
-  "author": "Putta Khunchalee <putta@zcoin.io>",
-  "publisher": "zcoinofficial",
+  "name": "boost-test-adapter-debug",
+  "version": "2.0.1",
+  "displayName": "Boost.Test Explorer with debug",
+  "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
+  "author": "Putta Khunchalee <putta@zcoin.io>, Nic Newdigate<nicnewdigate@gmail.com>",
+  "publisher": "newdigate",
   "license": "MIT",
-  "homepage": "https://github.com/zcoinofficial/vscode-boost-test-adapter",
+  "homepage": "https://github.com/newdigate/vscode-boost-test-adapter",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zcoinofficial/vscode-boost-test-adapter.git"
+    "url": "https://github.com/newdigate/vscode-boost-test-adapter.git"
   },
   "bugs": {
-    "url": "https://github.com/zcoinofficial/vscode-boost-test-adapter/issues"
+    "url": "https://github.com/newdigate/vscode-boost-test-adapter/issues"
   },
   "categories": [
     "Other"
