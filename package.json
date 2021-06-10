@@ -3,8 +3,8 @@
   "version": "2.0.1",
   "displayName": "Boost.Test Explorer with debug",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
-  "author": "Putta Khunchalee <putta@zcoin.io>, Nic Newdigate<nicnewdigate@gmail.com>",
-  "publisher": "newdigate",
+  "author": "Nic Newdigate<nicnewdigate@gmail.com>",
+  "publisher": "NicNewdigate",
   "license": "MIT",
   "homepage": "https://github.com/newdigate/vscode-boost-test-adapter",
   "repository": {
