@@ -1,7 +1,7 @@
 # Boost.Test Adapter for Visual Studio Code
-![debugger](debug.gif)
+![debugger](https://github.com/newdigate/vscode-boost-test-adapter/raw/master/debug.gif)
 
-This is a test adapter for [Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) to work with Boot.Test.
+This is a test adapter for [Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) to work with Boost.Test.
 
 I've adapted [firoorg's boost test adapter](https://github.com/firoorg/vscode-boost-test-adapter) to allow debugging
 
