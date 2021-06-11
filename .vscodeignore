@@ -5,3 +5,4 @@ declarations.d.ts
 package-lock.json
 src/**
 tsconfig.json
+.idea/**

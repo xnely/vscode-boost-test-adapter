@@ -158,8 +158,17 @@ export class BoostTestAdapter implements TestAdapter {
 			request: "launch",
 			cwd: this.testExecutable?.workspaceFolder.uri.fsPath,
 			program: path,
-			MIMode: "lldb",
-			args:args
+			linux: {
+				MIMode: "gdb",
+			},
+			osx: {
+				MIMode: "lldb"
+			},
+			windows: {
+				MIMode: "gdb",
+			},
+			args:args,
+			outputCapture: "std"
 		};
 		this.log.info(`${JSON.stringify(debugConfiguration)} workspaceFolder=${this.testExecutable?.workspaceFolder.uri.fsPath}`)
 		await vscode.debug.startDebugging( undefined, debugConfiguration);
