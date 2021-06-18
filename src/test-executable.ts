@@ -5,7 +5,7 @@ import { resolve } from 'path';
 import { createInterface, ReadLine } from 'readline';
 import { WorkspaceFolder } from 'vscode';
 import { TestEvent, TestInfo, TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
-
+import { Log } from 'vscode-test-adapter-util'
 interface TestSession {
 	readonly stdout: ReadLine;
 	readonly stderr: ReadLine;
@@ -114,7 +114,7 @@ export class TestExecutable {
 		return tests;
 	}
 
-	async runTests(ids: string[] | undefined, progress: (e: TestSuiteEvent | TestEvent) => void): Promise<boolean> {
+	async runTests(ids: string[] | undefined, progress: (e: TestSuiteEvent | TestEvent) => void, log:Log): Promise<boolean> {
 		let session: TestSession;
 		let suite: string | undefined;
 		let error: string | undefined;
@@ -136,6 +136,7 @@ export class TestExecutable {
 
 		session.stdout.on('line', line => {
 			let match: RegExpMatchArray | null;
+			log.info( line );
 
 			// case start
 			match = /^(.+): Entering test case "(\w+)"$/.exec(line);

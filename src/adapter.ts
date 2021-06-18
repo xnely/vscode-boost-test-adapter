@@ -134,7 +134,7 @@ export class BoostTestAdapter implements TestAdapter {
 			try {
 				await this.testExecutable!.runTests(all ? undefined : tests, e => {
 					this.testStatesEmitter.fire(e);
-				});
+				}, this.log);
 			} catch (e) {
 				this.log.error(e);
 			}
