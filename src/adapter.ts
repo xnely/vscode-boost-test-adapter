@@ -15,35 +15,65 @@ import {
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
 import { BinaryError, TestExecutable } from './test-executable';
-
+var path = require('path');
 export class BoostTestAdapter implements TestAdapter {
 	private readonly mutex: Mutex;
 	private readonly disposables: { dispose(): void }[];
 	private readonly testsEmitter: EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>;
 	private readonly testStatesEmitter: EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>;
-	private readonly testExecutable?: TestExecutable;
+	private testExecutable?: TestExecutable;
 	private watcher?: FileSystemWatcher;
 	private currentTests?: TestSuiteInfo;
 
 	constructor(readonly workspaceFolder: WorkspaceFolder, private readonly log: Log) {
-		const settings = workspace.getConfiguration('boost-test-adapter');
-		const executable = settings.get<string>('testExecutable');
-		const sourcePrefix = settings.get<string>('sourcePrefix');
 
-		this.log.info(`executable = '${executable}', sourcePrefix = '${sourcePrefix}'`)
+
+		vscode.workspace.onDidChangeConfiguration(event => {
+			if (event.affectsConfiguration('boost-test-adapter')) {
+				try {
+					this.watcher = undefined;
+					this.updateSettings();
+					this.load();
+				} catch (err) {
+					console.warn(err)
+				}
+			}
+		});
+
+		this.updateSettings();
 		this.mutex = new Mutex();
 		this.disposables = [];
 		this.testsEmitter = new EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
 		this.testStatesEmitter = new EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
+
+
+		this.disposables.push(this.testsEmitter);
+		this.disposables.push(this.testStatesEmitter);
+	}
+
+	updateSettings(): void {
+
+		const settings = workspace.getConfiguration('boost-test-adapter');
+
+		const executable = this.detokenizeVariables(settings.get<string>('testExecutable'));
+		this.log.info(`test executable: ${executable}`)
+
+		const sourcePrefix = this.detokenizeVariables(settings.get<string>('sourcePrefix'));
+		this.log.info(`sourcePrefix: ${sourcePrefix}`)
+
+		const cwd = this.detokenizeVariables(settings.get<string>('cwd'));
+		this.log.info(`test executable current working directory: ${cwd}`)
+
+		this.log.info(`executable = '${executable}', sourcePrefix = '${sourcePrefix}', cwd='${cwd}'`)
+
 		this.testExecutable = executable
 			? new TestExecutable(
 				this.workspaceFolder,
 				executable,
+				cwd,
 				sourcePrefix ? resolve(this.workspaceFolder.uri.fsPath, sourcePrefix) : undefined)
 			: undefined;
-
-		this.disposables.push(this.testsEmitter);
-		this.disposables.push(this.testStatesEmitter);
+		this.load();
 	}
 
 	get tests(): Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -74,7 +104,7 @@ export class BoostTestAdapter implements TestAdapter {
 		const release = await this.mutex.acquire();
 
 		try {
-			this.testsEmitter.fire({ type: 'started' });
+			this.testsEmitter.fire({type: 'started'});
 
 			try {
 				this.currentTests = await this.testExecutable.listTest();
@@ -86,7 +116,7 @@ export class BoostTestAdapter implements TestAdapter {
 				this.currentTests = undefined;
 			}
 
-			this.testsEmitter.fire({ type: 'finished', suite: this.currentTests });
+			this.testsEmitter.fire({type: 'finished', suite: this.currentTests});
 		} finally {
 			release();
 		}
@@ -129,7 +159,7 @@ export class BoostTestAdapter implements TestAdapter {
 		const release = await this.mutex.acquire();
 
 		try {
-			this.testStatesEmitter.fire({ type: 'started', tests });
+			this.testStatesEmitter.fire({type: 'started', tests});
 
 			try {
 				await this.testExecutable!.runTests(all ? undefined : tests, e => {
@@ -139,14 +169,14 @@ export class BoostTestAdapter implements TestAdapter {
 				this.log.error(e);
 			}
 
-			this.testStatesEmitter.fire({ type: 'finished' });
+			this.testStatesEmitter.fire({type: 'finished'});
 		} finally {
 			release();
 		}
 	}
 
 	async debug?(tests: string[]): Promise<void> {
-		let args:String[] = [];
+		let args: String[] = [];
 		const ids = tests.join(',');
 		if (ids) {
 			args = [`--run_test=${ids}`];
@@ -156,7 +186,7 @@ export class BoostTestAdapter implements TestAdapter {
 			name: "(lldb) Launch test cmake",
 			type: "cppdbg",
 			request: "launch",
-			cwd: this.testExecutable?.workspaceFolder.uri.fsPath,
+			cwd: this.testExecutable?.cwd,
 			program: path,
 			linux: {
 				MIMode: "gdb",
@@ -167,13 +197,48 @@ export class BoostTestAdapter implements TestAdapter {
 			windows: {
 				MIMode: "gdb",
 			},
-			args:args,
+			args: args,
 			outputCapture: "std"
 		};
-		this.log.info(`${JSON.stringify(debugConfiguration)} workspaceFolder=${this.testExecutable?.workspaceFolder.uri.fsPath}`)
-		await vscode.debug.startDebugging( undefined, debugConfiguration);
+		this.log.info(`${JSON.stringify(debugConfiguration)} workspaceFolder=${this.testExecutable?.workspaceFolder.uri.fsPath} cwd=${this.testExecutable?.cwd}`)
+		await vscode.debug.startDebugging(undefined, debugConfiguration);
 	}
 
 	cancel() {
+	}
+
+	// detokenizeVariables is based on https://github.com/DominicVonk/vscode-variables
+	detokenizeVariables(rawValue: string | undefined, recursive = false): string | undefined {
+		if (rawValue == undefined) {
+			return undefined;
+		}
+
+		let workspaces = vscode.workspace.workspaceFolders;
+		let workspace = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0] : null;
+		let activeFile = vscode.window.activeTextEditor?.document;
+		let absoluteFilePath = activeFile?.uri.fsPath
+		rawValue = rawValue?.replace(/\${workspaceFolder}/g, workspace?.uri.fsPath ?? "");
+		rawValue = rawValue?.replace(/\${workspaceFolderBasename}/g, workspace?.name ?? "");
+		rawValue = rawValue?.replace(/\${file}/g, absoluteFilePath ?? "");
+		let activeWorkspace = workspace;
+		let relativeFilePath = absoluteFilePath;
+		for (let workspace of workspaces ?? []) {
+			if (absoluteFilePath?.replace(workspace.uri.fsPath, '') !== absoluteFilePath) {
+				activeWorkspace = workspace;
+				relativeFilePath = absoluteFilePath?.replace(workspace.uri.fsPath, '').substr(path.sep.length);
+				break;
+			}
+		}
+		let parsedPath = path.parse(absoluteFilePath);
+		rawValue = rawValue?.replace(/\${fileWorkspaceFolder}/g, activeWorkspace?.uri.fsPath ?? "");
+		rawValue = rawValue?.replace(/\${relativeFile}/g, relativeFilePath ?? "");
+		rawValue = rawValue?.replace(/\${relativeFileDirname}/g, relativeFilePath?.substr(0, relativeFilePath.lastIndexOf(path.sep)) ?? "");
+		rawValue = rawValue?.replace(/\${fileBasename}/g, parsedPath.base ?? "");
+		rawValue = rawValue?.replace(/\${fileBasenameNoExtension}/g, parsedPath.name ?? "");
+		rawValue = rawValue?.replace(/\${fileExtname}/g, parsedPath.ext ?? "");
+		rawValue = rawValue?.replace(/\${fileDirname}/g, parsedPath.dir.substr(parsedPath.dir.lastIndexOf(path.sep) + 1));
+		rawValue = rawValue?.replace(/\${cwd}/g, parsedPath.dir);
+		rawValue = rawValue?.replace(/\${pathSeparator}/g, path.sep);
+		return rawValue;
 	}
 }

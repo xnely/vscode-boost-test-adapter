@@ -1,6 +1,6 @@
 {
   "name": "boost-test-adapter-debug",
-  "version": "2.0.11",
+  "version": "2.0.17",
   "displayName": "Boost.Test Explorer with debug",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
   "author": "Nic Newdigate<nicnewdigate@gmail.com>",
@@ -70,6 +70,11 @@
           "description": "Relative path to a test executable.",
           "type": "string",
           "scope": "resource"
+        },
+        "boost-test-adapter.cwd": {
+          "description": "Current working directory for test executable.",
+          "type": "string",
+          "scope": "window"
         },
         "boost-test-adapter.sourcePrefix": {
           "description": "Relative path to prefixes all the source files that output from a test executable.",

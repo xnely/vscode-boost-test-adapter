@@ -42,6 +42,7 @@ export class TestExecutable {
 	constructor(
 		readonly workspaceFolder: WorkspaceFolder,
 		readonly path: string,
+		readonly cwd?: string,
 		readonly sourcePrefix?: string) {
 	}
 
@@ -209,7 +210,7 @@ export class TestExecutable {
 
 	private run(args: string[]): TestSession {
 		const path = resolve(this.workspaceFolder.uri.fsPath, this.path);
-		const process = spawn(path, ['-x', 'no'].concat(args), { stdio: ['ignore', 'pipe', 'pipe'] });
+		const process = spawn(path, ['-x', 'no'].concat(args), { cwd: this.cwd });
 		let stdout, stderr: ReadLine | undefined;
 
 		try {
