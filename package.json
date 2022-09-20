@@ -1,6 +1,6 @@
 {
   "name": "boost-test-adapter",
-  "version": "3.0.0-pre7",
+  "version": "3.0.0",
   "displayName": "Boost.Test Explorer",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
   "author": "Gabor Fekete <dev.feheren.fekete@gmail.com>",
