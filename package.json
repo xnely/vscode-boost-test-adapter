@@ -1,18 +1,18 @@
 {
-  "name": "boost-test-adapter-debug",
-  "version": "2.0.18",
-  "displayName": "Boost.Test Explorer with debug",
+  "name": "boost-test-adapter",
+  "version": "3.0.0-pre2",
+  "displayName": "Boost.Test Explorer",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
-  "author": "Nic Newdigate<nicnewdigate@gmail.com>",
-  "publisher": "NicNewdigate",
+  "author": "Gabor Fekete <dev.feheren.fekete@gmail.com>",
+  "publisher": "feheren-fekete",
   "license": "MIT",
-  "homepage": "https://github.com/newdigate/vscode-boost-test-adapter",
+  "homepage": "https://github.com/feher/vscode-boost-test-adapter",
   "repository": {
     "type": "git",
-    "url": "https://github.com/newdigate/vscode-boost-test-adapter.git"
+    "url": "https://github.com/feher/vscode-boost-test-adapter.git"
   },
   "bugs": {
-    "url": "https://github.com/newdigate/vscode-boost-test-adapter/issues"
+    "url": "https://github.com/feher/vscode-boost-test-adapter/issues"
   },
   "categories": [
     "Other"
@@ -32,16 +32,16 @@
   },
   "dependencies": {
     "async-mutex": "^0.1.4",
-    "dotparser": "^1.0.0",
-    "tslib": "^1.9.3",
-    "vscode-test-adapter-api": "^1.7.0",
-    "vscode-test-adapter-util": "^0.7.0"
+    "dotparser": "^1.1.1",
+    "tslib": "^1.14.1",
+    "vscode-test-adapter-api": "^1.9.0",
+    "vscode-test-adapter-util": "^0.7.1"
   },
   "devDependencies": {
     "@types/node": "8.9.3",
     "@types/vscode": "1.26.0",
     "rimraf": "^3.0.2",
-    "typescript": "^3.8.3"
+    "typescript": "^3.9.10"
   },
   "engines": {
     "vscode": "^1.26.0"
@@ -54,7 +54,7 @@
   ],
   "contributes": {
     "configuration": {
-      "title": "Boost.Test Explorer",
+      "title": "Boost.Test Adapter",
       "properties": {
         "boost-test-adapter.logpanel": {
           "description": "Write diagnotic logs to an output panel.",
@@ -66,19 +66,51 @@
           "type": "string",
           "scope": "window"
         },
-        "boost-test-adapter.testExecutable": {
-          "description": "Relative path to a test executable.",
-          "type": "string",
-          "scope": "resource"
-        },
-        "boost-test-adapter.cwd": {
-          "description": "Current working directory for test executable.",
-          "type": "string",
-          "scope": "window"
-        },
-        "boost-test-adapter.sourcePrefix": {
-          "description": "Relative path to prefixes all the source files that output from a test executable.",
-          "type": "string",
+        "boost-test-adapter.tests": {
+          "description": "Test configurations.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Test configuration.",
+            "properties": {
+              "testExecutable": {
+                "description": "Absolute or relative path to a test executable.",
+                "type": "string"
+              },
+              "debugConfig": {
+                "description": "The name of a launch configuration used for debugging.",
+                "type": "string"
+              },
+              "env": {
+                "description": "Environment variables for running and debugging the tests.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Environment variable.",
+                  "properties": {
+                    "name": {
+                      "description": "Name of the environment variable.",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "Value of the environment variable.",
+                      "type": "string"
+                    }
+                  }
+                },
+                "default": []
+              },
+              "cwd": {
+                "description": "Working directory for the test executable.",
+                "type": "string"
+              },
+              "sourcePrefix": {
+                "description": "Used to convert relative source file paths to absolute paths. It's needed only if the test-case file paths are broken in the Test Explorer UI.",
+                "type": "string"
+              }
+            }
+          },
+          "default": [],
           "scope": "resource"
         }
       }
