@@ -5,10 +5,8 @@ import { BoostTestAdapter } from './adapter';
 import * as logger from './logger';
 
 export async function activate(context: vscode.ExtensionContext) {
-    // init adaptor logging
-    //const ws = (vscode.workspace.workspaceFolders || [])[0];
     const log = new logger.MyLogger('Boost.Test Adapter');
-    //const log = new Log('boost-test-adapter', ws, 'Boost.Test Explorer');
+    log.info("Extension activated");
 
     context.subscriptions.push(log);
 

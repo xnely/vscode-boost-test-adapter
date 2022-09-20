@@ -1,6 +1,6 @@
 {
   "name": "boost-test-adapter",
-  "version": "3.0.0-pre2",
+  "version": "3.0.0-pre7",
   "displayName": "Boost.Test Explorer",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
   "author": "Gabor Fekete <dev.feheren.fekete@gmail.com>",
@@ -50,23 +50,13 @@
     "hbenl.vscode-test-explorer"
   ],
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "contributes": {
     "configuration": {
       "title": "Boost.Test Adapter",
       "properties": {
-        "boost-test-adapter.logpanel": {
-          "description": "Write diagnotic logs to an output panel.",
-          "type": "boolean",
-          "scope": "window"
-        },
-        "boost-test-adapter.logfile": {
-          "description": "Write diagnostic logs to the given file.",
-          "type": "string",
-          "scope": "window"
-        },
-        "boost-test-adapter.tests": {
+        "boost-test-adapter-v3.tests": {
           "description": "Test configurations.",
           "type": "array",
           "items": {

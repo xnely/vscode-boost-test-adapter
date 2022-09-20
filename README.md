@@ -22,7 +22,7 @@ using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName
 
 ## Configurations
 ```json
-    "boost-test-adapter.tests": [
+    "boost-test-adapter-v3.tests": [
         {
             // Mandatory: Path to a test executable. May be absolute or relative path.
             "testExecutable": "build\\Debug\\main_test_1.exe",
@@ -46,11 +46,3 @@ using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName
 
 ## Features that not implemented yet
 - When debugging a test, the red/green status of the test is not updated in the test explorer
-
-# Development
-
-- Fetch npm dependencies: `npm update`
-- Build the code: `npm run-script build`
-- Run and debug: Start the `Boost.Test Explorer` launch configuration in VS Code.
-- Create a vsix package for testing: `vsce package`
-- Publishing: https://code.visualstudio.com/api/working-with-extensions/publishing-extension

@@ -3,6 +3,18 @@ import * as logger from './logger';
 import * as util from './util';
 import { resolve } from 'path';
 
+//
+// IMPORTANT: Use the same name in package.json!
+//
+// The configuration name is "boost-test-adapter-vN" where
+// the trailing "N" is the major version number of this extension.
+//
+// It follow semantic versioning. So, if you modify the extension
+// configuration in a backwards incompatible way then use N+1 here
+// also.
+//
+export const BoosTestAdapterConfig = "boost-test-adapter-v3";
+
 export interface TestEnvvar {
     name: string;
     value: string;
@@ -25,10 +37,10 @@ export function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.M
         testExes: []
     };
 
-    const cfg = vscode.workspace.getConfiguration('boost-test-adapter');
+    const cfg = vscode.workspace.getConfiguration(BoosTestAdapterConfig);
 
     if (!cfg.has('tests')) {
-        log.warn(`No boost-test-adapter.tests found.`);
+        log.warn(`Settings: No ${BoosTestAdapterConfig}.tests found.`);
         return testConfig;
     }
     const cfgTests = cfg.get<Record<string, any>[]>('tests');
