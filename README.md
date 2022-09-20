@@ -1,10 +1,10 @@
-# Boost.Test Adapter with debugging
+# Boost.Test Adapter
 This extension allows you to run your [Boost.Test](https://github.com/boostorg/test) tests
 using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer).
 
-* Extends originals:
-  - https://github.com/firoorg/vscode-boost-test-adapter
-  - https://github.com/newdigate/vscode-boost-test-adapter.git
+This extension is based on code from these extensions:
+- https://github.com/firoorg/vscode-boost-test-adapter
+- https://github.com/newdigate/vscode-boost-test-adapter.git
 
 ## Features
 * Tests will appear in the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
@@ -22,7 +22,7 @@ using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName
 
 ## Configurations
 ```json
-    "boost-test-adapter-v3.tests": [
+    "boost-test-adapter-feher.tests": [
         {
             // Mandatory: Path to a test executable. May be absolute or relative path.
             "testExecutable": "build\\Debug\\main_test_1.exe",

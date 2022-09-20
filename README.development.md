@@ -11,7 +11,3 @@
 We follow semantic versioning. So, if you modify the extension
 in a backwards incompatible way then increment the major version
 number.
-
-**IMPORTANT!**
-If the major number changes from `A` to `B` then search and replace every occurence
-of `boos-test-adapter-vA` with `boos-test-adapter-vB`!

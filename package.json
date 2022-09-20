@@ -1,7 +1,7 @@
 {
-  "name": "boost-test-adapter",
+  "name": "boost-test-adapter-feher",
   "version": "3.0.0",
-  "displayName": "Boost.Test Explorer",
+  "displayName": "Boost.Test Adapter",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
   "author": "Gabor Fekete <dev.feheren.fekete@gmail.com>",
   "publisher": "feheren-fekete",
@@ -56,7 +56,7 @@
     "configuration": {
       "title": "Boost.Test Adapter",
       "properties": {
-        "boost-test-adapter-v3.tests": {
+        "boost-test-adapter-feher.tests": {
           "description": "Test configurations.",
           "type": "array",
           "items": {
