@@ -329,6 +329,8 @@ export class TestExecutable {
             }
         });
 
+        const lastItem = (arr: string[]) => arr[arr.length - 1];
+
         session.stdout.on('line', line => {
             let match: RegExpMatchArray | null;
             this.log.test(line);
@@ -350,8 +352,8 @@ export class TestExecutable {
             match = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
 
             if (match) {
-                if (currentTestId[-1] !== match[2]) {
-                    this.log.error(`When parsing test output: '${currentTestId[-1]}' != '${match[2]}'`);
+                if (lastItem(currentTestId) !== match[2]) {
+                    this.log.error(`When parsing test output: '${lastItem(currentTestId)}' != '${match[2]}'`);
                 }
                 progress({
                     type: 'test',
@@ -395,8 +397,8 @@ export class TestExecutable {
             match = /^(.+): Leaving test suite "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
 
             if (match) {
-                if (currentTestId[-1] !== match[2]) {
-                    this.log.error(`When parsing test output: '${currentTestId[-1]}' != '${match[2]}'`);
+                if (lastItem(currentTestId) !== match[2]) {
+                    this.log.error(`When parsing test output: '${lastItem(currentTestId)}' != '${match[2]}'`);
                 }
                 progress({
                     type: 'suite',
