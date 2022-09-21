@@ -26,11 +26,27 @@ This extension is based on code from these extensions:
         {
             // Mandatory: Path to a test executable. May be absolute or relative path.
             "testExecutable": "build\\Debug\\main_test_1.exe",
+
             // Optional: The working directory for the test executable.
             "cwd": "${workspaceFolder}",
+
             // Mandatory: The name of the launch configuration used for debugging.
             // The 'program' and 'args' options will be overwritten by this extension. 
             "debugConfig": "Test config",
+
+            // Optional: A simple key=value file with environment variables for running and debugging the tests.
+            "envFile": "${workspaceFolder}/.env",
+
+            // Optional: Environment variables for running and debugging the tests.
+            // These env vars are merged with the ones from envFile (if present).
+            // These env vars take precedence over the ones from envFile.
+            "env": [
+              {
+                "name": "MY_VAR",
+                "value": "my var value"
+              }
+            ],
+
             // Optional: Used to convert relative source file paths to absolute paths.
             // It's needed only if the test-case file paths are broken in the Test Explorer UI.
             "sourcePrefix": "${workspaceFolder}"

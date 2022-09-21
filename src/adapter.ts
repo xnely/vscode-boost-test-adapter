@@ -32,11 +32,10 @@ export class BoostTestAdapter implements TestAdapter {
 
         log.info("Initializing adapter.");
         vscode.workspace.onDidChangeConfiguration(async event => {
-            if (event.affectsConfiguration('boost-test-adapter')) {
+            if (event.affectsConfiguration(config.BoosTestAdapterConfig)) {
                 try {
                     this.log.info("Configuration changed. Reloading tests.")
-                    await this.updateSettings();
-                    await this.load();
+                    await this.reload();
                 } catch (err) {
                     console.warn(err)
                 }
@@ -48,35 +47,38 @@ export class BoostTestAdapter implements TestAdapter {
 
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
+    }
 
-        this.updateSettingsUnlocked();
-        this.load();
+    async reload(): Promise<void> {
+        await this.updateSettings();
+        await this.load();
     }
 
     private async updateSettings(): Promise<void> {
         const release = await this.mutex.acquire();
         try {
-            this.updateSettingsUnlocked();
+            await this.updateSettingsUnlocked();
         } finally {
             release();
         }
     }
 
-    private updateSettingsUnlocked(): void {
+    private async updateSettingsUnlocked(): Promise<void> {
         this.clearWatchers();
         this.currentTests.clear();
         this.testExecutables.clear();
         //this.testsEmitter.fire({ type: 'started' });
         //this.testsEmitter.fire({ type: 'finished', suite: this.createRootTestSuiteInfo() });
 
-        const cfg = config.getConfig(this.workspaceFolder, this.log);
+        const cfg = await config.getConfig(this.workspaceFolder, this.log);
 
         for (const cfgTestExe of cfg.testExes) {
             const testExeId = this.createTestExeId(cfgTestExe.path);
             this.testExecutables.set(testExeId, new TestExecutable(
                 testExeId,
                 this.workspaceFolder,
-                cfgTestExe));
+                cfgTestExe,
+                this.log));
         }
     }
 
@@ -135,10 +137,13 @@ export class BoostTestAdapter implements TestAdapter {
         this.currentTests.clear();
 
         if (this.testExecutables.size === 0) {
-            this.log.info('No test executable is provided in the configuration');
-            this.testsEmitter.fire({ type: 'started' });
-            this.testsEmitter.fire({ type: 'finished', suite: this.createRootTestSuiteInfo() });
-            return;
+            await this.updateSettingsUnlocked();
+            if (this.testExecutables.size === 0) {
+                this.log.info('No valid test executables found. Cannot load tests.');
+                this.testsEmitter.fire({ type: 'started' });
+                this.testsEmitter.fire({ type: 'finished', suite: this.createRootTestSuiteInfo() });
+                return;
+            }
         }
 
         for (const [_, testExecutable] of this.testExecutables) {
@@ -154,10 +159,7 @@ export class BoostTestAdapter implements TestAdapter {
             try {
                 await this.testExecutables.get(testExeId)!.runTests(
                     testIds,
-                    e => {
-                        this.testStatesEmitter.fire(e);
-                    },
-                    this.log);
+                    e => this.testStatesEmitter.fire(e));
             } catch (e) {
                 this.log.exception(e, true);
             }
@@ -190,7 +192,7 @@ export class BoostTestAdapter implements TestAdapter {
 
         this.testsEmitter.fire({ type: 'started' });
         try {
-            this.currentTests.set(key, await testExecutable.listTest(this.log));
+            this.currentTests.set(key, await testExecutable.listTest());
         } catch (e) {
             this.log.exception(e);
 

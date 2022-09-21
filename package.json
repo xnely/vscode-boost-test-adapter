@@ -1,6 +1,6 @@
 {
   "name": "boost-test-adapter-feher",
-  "version": "3.0.1-pre1",
+  "version": "3.1.0-pre5",
   "displayName": "Boost.Test Adapter",
   "description": "Run or debug your Boost.Test tests in the Sidebar of Visual Studio Code",
   "author": "Gabor Fekete <dev.feheren.fekete@gmail.com>",
@@ -39,12 +39,12 @@
   },
   "devDependencies": {
     "@types/node": "8.9.3",
-    "@types/vscode": "1.26.0",
+    "@types/vscode": "1.59.0",
     "rimraf": "^3.0.2",
     "typescript": "^3.9.10"
   },
   "engines": {
-    "vscode": "^1.26.0"
+    "vscode": "^1.59.0"
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer"
@@ -71,6 +71,10 @@
                 "description": "The name of a launch configuration used for debugging.",
                 "type": "string"
               },
+              "envFile": {
+                "description": "A simple key=value file with environment variables for running and debugging the tests.",
+                "type": "string"
+              },
               "env": {
                 "description": "Environment variables for running and debugging the tests.",
                 "type": "array",
@@ -87,8 +91,7 @@
                       "type": "string"
                     }
                   }
-                },
-                "default": []
+                }
               },
               "cwd": {
                 "description": "Working directory for the test executable.",

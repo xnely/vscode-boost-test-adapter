@@ -6,15 +6,11 @@ import { resolve } from 'path';
 // IMPORTANT: Use the same name in package.json!
 export const BoosTestAdapterConfig = "boost-test-adapter-feher";
 
-export interface TestEnvvar {
-    name: string;
-    value: string;
-}
-
 export interface TestExe {
     path: string;
     debugConfig?: string;
-    env?: TestEnvvar[];
+    envFile?: string;
+    env?: Map<string, string>;
     cwd?: string;
     sourcePrefix?: string;
 }
@@ -23,7 +19,7 @@ export interface TestConfig {
     testExes: TestExe[];
 }
 
-export function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.MyLogger): TestConfig {
+export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.MyLogger): Promise<TestConfig> {
     const testConfig: TestConfig = {
         testExes: []
     };
@@ -71,12 +67,20 @@ export function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.M
             testExe.sourcePrefix = resolve(workspaceFolder.uri.fsPath, cfgTest.sourcePrefix);
         }
 
+        if (typeof cfgTest.envFile !== 'undefined') {
+            if (typeof cfgTest.envFile !== 'string') {
+                log.error(`Settings: envFile must be a string`);
+                continue;
+            }
+            testExe.envFile = util.detokenizeVariables(cfgTest.envFile);
+        }
+
         if (typeof cfgTest.env !== 'undefined') {
             if (!(cfgTest.env instanceof Array)) {
                 log.error(`Settings: env must be an array`);
                 continue;
             }
-            const testEnvs: TestEnvvar[] = [];
+            let testEnvMap = new Map<string, string>();
             for (const e of cfgTest.env) {
                 const cfgEnvvar = e as Record<string, any>;
                 if (typeof cfgEnvvar.name !== 'string') {
@@ -87,9 +91,9 @@ export function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.M
                     log.error(`Settings: Environment variable value must be a string`)
                     continue;
                 }
-                testEnvs.push({ name: cfgEnvvar.name, value: cfgEnvvar.value });
+                testEnvMap.set(cfgEnvvar.name, cfgEnvvar.value);
             }
-            testExe.env = testEnvs;
+            testExe.env = testEnvMap;
         }
 
         testConfig.testExes.push(testExe);

@@ -9,6 +9,8 @@ import { assert } from 'console';
 import * as logger from './logger';
 import * as config from './config';
 
+const fs = require('fs');
+
 interface TestSession {
     readonly stdout: ReadLine;
     readonly stderr: ReadLine;
@@ -177,21 +179,47 @@ class TreeBuilder {
     }
 }
 
+async function parseEnvFile(
+    filePath: string,
+    log: logger.MyLogger): Promise<Map<string, string>> {
+    let envMap = new Map<string, string>();
+    try {
+        const contents: string = await fs.promises.readFile(filePath, 'utf-8');
+        contents.split(/\r?\n/).forEach((line) => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.length > 0) {
+                const eqPos = trimmedLine.indexOf('=');
+                if (eqPos !== -1) {
+                    const name = trimmedLine.substring(0, eqPos);
+                    const value = trimmedLine.substring(eqPos + 1);
+                    envMap.set(name, value);
+                } else {
+                    log.warn(`Settings: Bad line in envFile: '${trimmedLine}'`);
+                }
+            }
+        });
+    } catch (e) {
+        log.exception(e);
+    }
+    return envMap;
+}
+
 export class TestExecutable {
     absPath: string;
     runningTests: TestSession[] = [];
     constructor(
         readonly id: string,
         readonly workspaceFolder: vscode.WorkspaceFolder,
-        readonly cfg: config.TestExe) {
+        readonly cfg: config.TestExe,
+        readonly log: logger.MyLogger) {
         this.absPath = resolve(this.workspaceFolder.uri.fsPath, this.cfg.path);
     }
 
-    async listTest(log: logger.MyLogger): Promise<TestSuiteInfo> {
-        log.info(`Loading tests from ${this.cfg.path}`);
+    async listTest(): Promise<TestSuiteInfo> {
+        this.log.info(`Loading tests from ${this.cfg.path}`);
 
         // gather all output
-        const session = this.run(['--color_output=no', '--list_content=DOT']);
+        const session = await this.run(['--color_output=no', '--list_content=DOT']);
         let output = '';
         let exit: number;
 
@@ -253,11 +281,10 @@ export class TestExecutable {
 
     async runTests(
         ids: string[],
-        progress: (e: TestSuiteEvent | TestEvent) => void,
-        log: logger.MyLogger): Promise<void> {
+        progress: (e: TestSuiteEvent | TestEvent) => void): Promise<void> {
 
         if (this.runningTests.length > 0) {
-            log.warn(`Some tests are still running from ${this.cfg.path}`, true);
+            this.log.warn(`Some tests are still running from ${this.cfg.path}`, true);
             return;
         }
 
@@ -265,7 +292,7 @@ export class TestExecutable {
         let error: string | undefined;
 
         if (ids.length === 0) {
-            log.warn(`No test IDs were provided. Not running anything from ${this.cfg.path}`);
+            this.log.warn(`No test IDs were provided. Not running anything from ${this.cfg.path}`);
             return;
         }
 
@@ -277,22 +304,22 @@ export class TestExecutable {
             '--detect_memory_leaks=0',
             '--color_output=no'];
         if (boostTestIds.length > 0) {
-            log.info(`Running the following tests from ${this.cfg.path}:`);
+            this.log.info(`Running the following tests from ${this.cfg.path}:`);
             for (const boostTestId of boostTestIds) {
-                log.info(boostTestId);
+                this.log.info(boostTestId);
             }
-            session = this.run(args.concat(['-t', boostTestIds.join(':')]));
+            session = await this.run(args.concat(['-t', boostTestIds.join(':')]));
         } else {
             // If there are no valid boost test IDs then we run all the tests.
-            log.info(`Running all tests from ${this.cfg.path}`);
-            session = this.run(args);
+            this.log.info(`Running all tests from ${this.cfg.path}`);
+            session = await this.run(args);
         }
 
         // Tracks the current test ID based on the stdout output.
         let currentTestId = [this.id];
 
-        log.show();
-        log.info("----------------------------------------");
+        this.log.show();
+        this.log.info("----------------------------------------");
 
         const maxStdErrLines = 100;
         const stdError: string[] = [];
@@ -304,7 +331,7 @@ export class TestExecutable {
 
         session.stdout.on('line', line => {
             let match: RegExpMatchArray | null;
-            log.test(line);
+            this.log.test(line);
 
             // case start
             match = /^(.+): Entering test case "(\w+)"$/.exec(line);
@@ -381,13 +408,13 @@ export class TestExecutable {
 
         // wait for process to exit
         const code = await session.stopped;
-        log.info(`${this.cfg.path} exited with code ${code}`);
+        this.log.info(`${this.cfg.path} exited with code ${code}`);
         if (code !== 0) {
-            log.error(`${this.cfg.path} exited with code ${code}`, true);
+            this.log.error(`${this.cfg.path} exited with code ${code}`, true);
             if (stdError.length > 0) {
-                log.error(`First ${maxStdErrLines} lines of stderr:`);
+                this.log.error(`First ${maxStdErrLines} lines of stderr:`);
                 for (const err of stdError) {
-                    log.error(err);
+                    this.log.error(err);
                 }
             }
         }
@@ -440,26 +467,25 @@ export class TestExecutable {
             log.error(`Cannot find launch configuration '${this.cfg.debugConfig}' for ${this.cfg.path}.`, true);
             return;
         }
+
         debugConfiguration["program"] = this.absPath;
         debugConfiguration["args"] = args;
         debugConfiguration["outputCapture"] = "std";
-        if (this.cfg.env instanceof Array) {
-            debugConfiguration["environment"] = this.cfg.env;
+        const envMap = await this.createFinalEnvMap();
+        if (typeof envMap !== 'undefined') {
+            debugConfiguration["environment"] = this.createEnvForDebug(envMap);
         }
+
         await vscode.debug.startDebugging(undefined, debugConfiguration);
     }
 
-    private run(args: string[]): TestSession {
+    private async run(args: string[]): Promise<TestSession> {
         const options: Record<string, any> = {
             cwd: this.cfg.cwd
         };
-        if (this.cfg.env instanceof Array) {
-            // spawn() needs env as a plain object of (key, value) pairs.
-            const env: Record<string, string> = {};
-            for (const e of this.cfg.env) {
-                env[e.name] = e.value;
-            }
-            options.env = env;
+        const envMap = await this.createFinalEnvMap();
+        if (typeof envMap !== 'undefined') {
+            options.env = this.createEnvForSpawn(envMap);
         }
         const process = spawn(this.absPath, args, options);
         let stdout, stderr: ReadLine | undefined;
@@ -481,4 +507,39 @@ export class TestExecutable {
             throw e;
         }
     }
+
+    private async createFinalEnvMap(): Promise<Map<string, string> | undefined> {
+        let map: Map<string, string> | undefined;
+        if (typeof this.cfg.envFile !== 'undefined') {
+            map = await parseEnvFile(this.cfg.envFile, this.log);
+        }
+        if (typeof this.cfg.env !== 'undefined') {
+            if (typeof map !== 'undefined') {
+                for (const [name, val] of this.cfg.env) {
+                    map.set(name, val);
+                }
+            } else {
+                map = this.cfg.env;
+            }
+        }
+        return map;
+    }
+
+    private createEnvForDebug(envMap: Map<string, string>): { name: string, value: string }[] {
+        let env: { name: string, value: string }[] = [];
+        for (const [n, v] of envMap) {
+            env.push({ name: n, value: v });
+        }
+        return env;
+    }
+
+    private createEnvForSpawn(envMap: Map<string, string>): Record<string, string> {
+        // spawn() needs env as a plain object of (key, value) pairs.
+        let env: Record<string, string> = {};
+        for (const [n, v] of envMap) {
+            env[n] = v;
+        }
+        return env;
+    }
+
 }
