@@ -2,6 +2,8 @@
 This extension allows you to run your [Boost.Test](https://github.com/boostorg/test) tests
 using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer).
 
+![debugger](https://github.com/feher/vscode-boost-test-adapter/raw/master/debug.gif)
+
 This extension is based on code from these extensions:
 - https://github.com/firoorg/vscode-boost-test-adapter
 - https://github.com/newdigate/vscode-boost-test-adapter.git
@@ -59,6 +61,9 @@ This extension is based on code from these extensions:
     ]
 
 ```
+
+## Issues
+- You may need to restart VS Code after installing this extension.
 
 ## Features not implemented yet
 - When debugging a test, the red/green status of the test is not updated in the test explorer
