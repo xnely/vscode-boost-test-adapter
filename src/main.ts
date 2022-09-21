@@ -6,7 +6,7 @@ import * as logger from './logger';
 
 export async function activate(context: vscode.ExtensionContext) {
     const log = new logger.MyLogger('Boost.Test Adapter');
-    log.info("Extension activated");
+    log.info("Extension activated.");
 
     context.subscriptions.push(log);
 
@@ -21,5 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
             undefined);
 
         context.subscriptions.push(registrar);
+    } else {
+        log.error("Cannot find the Test Explorer UI extensions.");
     }
 }

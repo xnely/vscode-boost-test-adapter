@@ -30,6 +30,7 @@ export class BoostTestAdapter implements TestAdapter {
         readonly workspaceFolder: WorkspaceFolder,
         private readonly log: logger.MyLogger) {
 
+        log.info("Initializing adapter.");
         vscode.workspace.onDidChangeConfiguration(async event => {
             if (event.affectsConfiguration('boost-test-adapter')) {
                 try {
