@@ -25,7 +25,7 @@ This extension is based on code from these extensions:
     "boost-test-adapter-feher.tests": [
         {
             // Mandatory: Path to a test executable. May be absolute or relative path.
-            "testExecutable": "build\\Debug\\main_test_1.exe",
+            "testExecutable": "build/Debug/main_test_1",
 
             // Optional: The working directory for the test executable.
             "cwd": "${workspaceFolder}",
@@ -52,7 +52,7 @@ This extension is based on code from these extensions:
             "sourcePrefix": "${workspaceFolder}"
         },
         {
-            "testExecutable": "build\\Debug\\main_test_2.exe",
+            "testExecutable": "build/Debug/main_test_2",
             "cwd": "${workspaceFolder}",
             "debugConfig": "Test config"
         }
@@ -60,5 +60,5 @@ This extension is based on code from these extensions:
 
 ```
 
-## Features that not implemented yet
+## Features not implemented yet
 - When debugging a test, the red/green status of the test is not updated in the test explorer
