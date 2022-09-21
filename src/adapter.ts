@@ -1,5 +1,4 @@
 import { Mutex } from 'async-mutex';
-import { assert } from 'console';
 import * as vscode from "vscode";
 import { Event, EventEmitter, FileSystemWatcher, RelativePattern, workspace, WorkspaceFolder, Uri } from 'vscode';
 import {
@@ -170,8 +169,10 @@ export class BoostTestAdapter implements TestAdapter {
     private async debugUnlocked(tests: string[]): Promise<void> {
         const testIds = this.resolveRootTestId(tests);
         const m = this.groupTestIdsByTestExeId(testIds);
-        // Cannot debug multiple test executables at once
-        assert(m.size === 1);
+        if (m.size > 1) {
+            this.log.error("Cannot debug multiple test executables at once", true);
+            return;
+        }
 
         const testExeId = this.getTestExeId(testIds[0]);
         const testExecutable = this.testExecutables.get(testExeId)!;

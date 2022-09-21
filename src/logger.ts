@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 export class MyLogger {
-//	private readonly sender = "boost-test-adapter";
 	private outputChannel: vscode.OutputChannel;
 	constructor(channelName: string) {
 		this.outputChannel = vscode.window.createOutputChannel(channelName);
