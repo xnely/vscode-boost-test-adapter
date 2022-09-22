@@ -62,8 +62,18 @@ This extension is based on code from these extensions:
 
 ```
 
-## Issues
-- You may need to restart VS Code after installing this extension.
+## FAQ
+1. I don't see any tests in the Test Explorer UI. Why?
+   - Make sure you have configured your `settings.json` and `launch.json` properly.
+     - Take a look at the `Boost.Test Adapter` Output channel for potential issues.
+   - Press the reload button at the top of the Test Explorer UI.
+   - Restart VS Code.
+2. Why is my test-root called "Hello World" (or some other nonsense) in the Test Explorer UI?
+   - That is the Boost test module name. It comes from your test executable.
+     Usually from a line like this:
+     ```
+     #define BOOST_TEST_MODULE Hello World
+     ``` 
 
 ## Features not implemented yet
 - When debugging a test, the red/green status of the test is not updated in the test explorer
