@@ -25,6 +25,14 @@ class LabelInfo {
         public line: number) { }
 }
 
+function parseRootLabel(node: Node): string {
+    const label = node.attr_list.find(a => a.id === 'label');
+    if (!label) {
+        throw new Error('Node does not have a "label" attribute');
+    }
+    return label.eq;
+}
+
 function parseLabel(node: Node): LabelInfo {
     const label = node.attr_list.find(a => a.id === 'label');
 
@@ -77,6 +85,7 @@ class TreeNode {
         let testId = "";
         if (parentTestId === "") {
             info = { ...rootInfo };
+            info.name = parseRootLabel(this.node);
             testId = rootId;
         } else {
             info = parseLabel(this.node);
@@ -89,9 +98,9 @@ class TreeNode {
                 // The root node is the executable file.
                 testSuiteInfo = <TestSuiteInfo>{
                     type: 'suite',
-                    id: rootId,
-                    label: rootInfo.name,
-                    file: rootInfo.file,
+                    id: testId,
+                    label: info.name,
+                    file: info.file,
                     line: undefined,
                     children: []
                 };
