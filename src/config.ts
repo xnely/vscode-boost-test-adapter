@@ -44,14 +44,14 @@ export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: lo
         }
         testExe.path = util.detokenizeVariables(cfgTest.testExecutable);
 
-        if (typeof cfgTest.debugConfig !== 'undefined') {
+        if (cfgTest.debugConfig !== undefined) {
             if (typeof cfgTest.debugConfig !== 'string') {
                 log.error(`Settings: debugConfig must be a string`);
                 continue;
             }
             testExe.debugConfig = cfgTest.debugConfig;
         }
-        if (typeof cfgTest.cwd !== 'undefined') {
+        if (cfgTest.cwd !== undefined) {
             if (typeof cfgTest.cwd !== 'string') {
                 log.error(`Settings: cwd must be a string`);
                 continue;
@@ -59,7 +59,7 @@ export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: lo
             testExe.cwd = util.detokenizeVariables(cfgTest.cwd);
         }
 
-        if (typeof cfgTest.sourcePrefix !== 'undefined') {
+        if (cfgTest.sourcePrefix !== undefined) {
             if (typeof cfgTest.sourcePrefix !== 'string') {
                 log.error(`Settings: sourcePrefix must be a string`);
                 continue;
@@ -67,7 +67,7 @@ export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: lo
             testExe.sourcePrefix = resolve(workspaceFolder.uri.fsPath, cfgTest.sourcePrefix);
         }
 
-        if (typeof cfgTest.envFile !== 'undefined') {
+        if (cfgTest.envFile !== undefined) {
             if (typeof cfgTest.envFile !== 'string') {
                 log.error(`Settings: envFile must be a string`);
                 continue;
@@ -75,7 +75,7 @@ export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: lo
             testExe.envFile = util.detokenizeVariables(cfgTest.envFile);
         }
 
-        if (typeof cfgTest.env !== 'undefined') {
+        if (cfgTest.env !== undefined) {
             if (!(cfgTest.env instanceof Array)) {
                 log.error(`Settings: env must be an array`);
                 continue;

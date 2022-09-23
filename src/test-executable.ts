@@ -1,13 +1,12 @@
-import { ChildProcess, spawn } from 'child_process';
 import parseDot = require('dotparser');
-import { Graph, Node } from 'dotparser';
+import { ChildProcess, spawn } from 'child_process';
 import { resolve } from 'path';
 import { createInterface, ReadLine } from 'readline';
 import * as vscode from "vscode";
-import { TestEvent, TestInfo, TestSuiteEvent, TestSuiteInfo } from 'vscode-test-adapter-api';
-import { assert } from 'console';
 import * as logger from './logger';
 import * as config from './config';
+import * as testidutil from './testidutil';
+import * as treebuilder from './test-tree-builder';
 
 const fs = require('fs');
 
@@ -18,213 +17,25 @@ interface TestSession {
     readonly process: ChildProcess;
 }
 
-class LabelInfo {
-    constructor(
-        public name: string,
-        public file: string,
-        public line: number) { }
-}
-
-function parseRootLabel(node: Node): string {
-    const label = node.attr_list.find(a => a.id === 'label');
-    if (!label) {
-        throw new Error('Node does not have a "label" attribute');
-    }
-    return label.eq;
-}
-
-function parseLabel(node: Node): LabelInfo {
-    const label = node.attr_list.find(a => a.id === 'label');
-
-    if (!label) {
-        throw new Error('Node does not have a "label" attribute');
-    }
-
-    const match = /^(\w+)\|(.+)\((\d+)\)$/.exec(label.eq);
-
-    if (!match) {
-        throw new Error(`Failed to extract label "${label.eq}"`);
-    }
-
-    return <LabelInfo>{
-        name: match[1],
-        file: match[2],
-        line: parseInt(match[3])
-    };
-}
-
 export class BinaryError extends Error {
     constructor(readonly cause: any, testExePath: string, cwd?: string) {
         super(`Cannot execute ${testExePath} (cwd is ${cwd}).`);
     }
 }
 
-class TreeNode {
-    constructor(
-        public parent: TreeNode | null,
-        public node: Node,
-        public children: Array<TreeNode>) {
-    }
-
-    nodeId(): string {
-        return this.node.node_id.id;
-    }
-
-    isRoot(): boolean {
-        return this.parent === null;
-    }
-
-    createTestInfo(
-        rootId: string,
-        rootInfo: LabelInfo,
-        parentTestId: string,
-        sourcePrefix?: string): TestSuiteInfo | TestInfo {
-
-        let info: LabelInfo;
-
-        let testId = "";
-        if (parentTestId === "") {
-            info = { ...rootInfo };
-            info.name = parseRootLabel(this.node);
-            testId = rootId;
-        } else {
-            info = parseLabel(this.node);
-            testId = `${parentTestId}/${info.name}`;
-        }
-
-        if (this.children.length > 0) {
-            let testSuiteInfo: TestSuiteInfo;
-            if (testId === rootId) {
-                // The root node is the executable file.
-                testSuiteInfo = <TestSuiteInfo>{
-                    type: 'suite',
-                    id: testId,
-                    label: info.name,
-                    file: info.file,
-                    line: undefined,
-                    children: []
-                };
-            } else {
-                testSuiteInfo = <TestSuiteInfo>{
-                    type: 'suite',
-                    id: testId,
-                    label: info.name,
-                    file: sourcePrefix ? resolve(sourcePrefix, info.file) : info.file,
-                    line: info!.line - 1, // we need to decrease line number by one otherwise codelen will not correct
-                    children: []
-                };
-            }
-            let childrenTestInfos: Array<TestSuiteInfo | TestInfo> = [];
-            for (const child of this.children) {
-                childrenTestInfos.push(child.createTestInfo(rootId, rootInfo, testId, sourcePrefix));
-            }
-            testSuiteInfo.children = childrenTestInfos;
-            return testSuiteInfo;
-        } else {
-            return <TestInfo>{
-                type: 'test',
-                id: testId,
-                label: info.name,
-                file: sourcePrefix ? resolve(sourcePrefix, info.file) : info.file,
-                line: info.line - 1
-            };
-        }
-    }
-}
-
-class TreeBuilder {
-    nodes: Array<TreeNode> = [];
-    buildFrom(graph: Graph) {
-        for (const child of graph.children) {
-            switch (child.type) {
-                case "node_stmt":
-                    this.nodes.push(new TreeNode(null, child, []));
-                    break;
-                case "edge_stmt":
-                    const fromNode = this.findTreeNode(child.edge_list[0].id);
-                    const toNode = this.findTreeNode(child.edge_list[1].id);
-                    if (toNode.isRoot()) {
-                        // Remove toNode from nodes.
-                        this.nodes = this.nodes.filter(n => n !== toNode);
-                        // Add toNode under fromNode.
-                        fromNode.children.push(toNode);
-                    } else {
-                        throw new Error(`Edge-to node is not root`);
-                    }
-                    break;
-                case "subgraph":
-                    this.buildFrom(child);
-                    break;
-            }
-        }
-    }
-
-    createTestInfo(rootId: string, rootInfo: LabelInfo, sourcePrefix?: string): TestSuiteInfo {
-        assert(this.nodes.length === 1);
-        return this.nodes[0].createTestInfo(rootId, rootInfo, "", sourcePrefix) as TestSuiteInfo;
-    }
-
-    private findTreeNode(nodeId: string): TreeNode {
-        for (const n of this.nodes) {
-            const f = this.findTreeNodeIn(n, nodeId);
-            if (f) {
-                return f;
-            }
-        }
-        throw new Error(`Cannot find node`);
-    }
-
-    private findTreeNodeIn(tn: TreeNode, nodeId: string): TreeNode | null {
-        if (tn.nodeId() === nodeId) {
-            return tn;
-        }
-        for (const child of tn.children) {
-            const ctn = this.findTreeNodeIn(child, nodeId);
-            if (ctn) {
-                return ctn;
-            }
-        }
-        return null;
-    }
-}
-
-async function parseEnvFile(
-    filePath: string,
-    log: logger.MyLogger): Promise<Map<string, string>> {
-    let envMap = new Map<string, string>();
-    try {
-        const contents: string = await fs.promises.readFile(filePath, 'utf-8');
-        contents.split(/\r?\n/).forEach((line) => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.length > 0) {
-                const eqPos = trimmedLine.indexOf('=');
-                if (eqPos !== -1) {
-                    const name = trimmedLine.substring(0, eqPos);
-                    const value = trimmedLine.substring(eqPos + 1);
-                    envMap.set(name, value);
-                } else {
-                    log.warn(`Settings: Bad line in envFile: '${trimmedLine}'`);
-                }
-            }
-        });
-    } catch (e) {
-        log.exception(e);
-    }
-    return envMap;
-}
-
 export class TestExecutable {
     absPath: string;
     runningTests: TestSession[] = [];
+    testItem?: vscode.TestItem;
     constructor(
-        readonly id: string,
+        readonly testExeTestItemId: string,
         readonly workspaceFolder: vscode.WorkspaceFolder,
         readonly cfg: config.TestExe,
         readonly log: logger.MyLogger) {
         this.absPath = resolve(this.workspaceFolder.uri.fsPath, this.cfg.path);
     }
 
-    async listTest(): Promise<TestSuiteInfo> {
+    async loadTests(ctrl: vscode.TestController): Promise<void> {
         this.log.info(`Loading tests from ${this.cfg.path}`);
 
         // gather all output
@@ -245,52 +56,28 @@ export class TestExecutable {
         }
 
         // parse the output
-        const parsed = parseDot(output);
-
-        if (!parsed.length) {
+        const graphs = parseDot(output);
+        if (graphs.length === 0) {
             throw new Error(`Failed to parse list of test cases from ${this.cfg.path}`);
         }
 
-        // extract module information
-        const root = parsed[0];
-
-        const rootInfo = new LabelInfo(
-            this.cfg.path,
+        // extract test module information
+        this.testItem = treebuilder.createTestExeTestItem(
             this.absPath,
-            0);
-        const tree = new TreeBuilder();
-        tree.buildFrom(root);
-        let tests = tree.createTestInfo(this.id, rootInfo, this.cfg.sourcePrefix);
-        return tests;
+            this.testExeTestItemId,
+            this.cfg.sourcePrefix,
+            graphs,
+            ctrl);
     }
 
-    // Full test IDs have this format:
-    // "test-exe-id/suite-1/suite-2/.../test-case"
-    //
-    // The Boost test ID has this format:
-    // "suite-1/suite-2/.../test-case"
-    //
-    // We must remove the test-exe-id because that is
-    // not part of the Boost test ID.
-    private createBoostTestIdsFrom(testIds: string[]): string[] {
-        const boostTestIds: string[] = [];
-        for (const testId of testIds) {
-            const separatorPos = testId.indexOf('/');
-            if (separatorPos === -1) {
-                continue;
-            }
-            const boostTestId = testId.substring(separatorPos + 1);
-            if (boostTestId.length === 0) {
-                continue;
-            }
-            boostTestIds.push(boostTestId);
+    getTestItem(): vscode.TestItem {
+        if (!this.testItem) {
+            throw Error(`TestItem is undefined for ${this.cfg.path}`);
         }
-        return boostTestIds;
+        return this.testItem;
     }
 
-    async runTests(
-        ids: string[],
-        progress: (e: TestSuiteEvent | TestEvent) => void): Promise<void> {
+    async runTests(testRun: vscode.TestRun, testItems: vscode.TestItem[]): Promise<void> {
 
         if (this.runningTests.length > 0) {
             this.log.warn(`Some tests are still running from ${this.cfg.path}`, true);
@@ -300,13 +87,13 @@ export class TestExecutable {
         let session: TestSession;
         let error: string | undefined;
 
-        if (ids.length === 0) {
+        if (testItems.length === 0) {
             this.log.warn(`No test IDs were provided. Not running anything from ${this.cfg.path}`);
             return;
         }
 
         // spawn the test process
-        const boostTestIds = this.createBoostTestIdsFrom(ids);
+        const boostTestIds = testidutil.createBoostTestIdsFrom(testItems);
         const args = [
             '-l', 'test_suite',
             '--catch_system_errors=no',
@@ -325,9 +112,8 @@ export class TestExecutable {
         }
 
         // Tracks the current test ID based on the stdout output.
-        let currentTestId = [this.id];
+        let currentTestIdParts = [this.testExeTestItemId];
 
-        this.log.show();
         this.log.info("----------------------------------------");
 
         const maxStdErrLines = 100;
@@ -340,19 +126,28 @@ export class TestExecutable {
 
         const lastItem = (arr: string[]) => arr[arr.length - 1];
 
+        const reportProgress = (testIdParts: string[], reporter: (testItem: vscode.TestItem) => void) => {
+            const testItemId = testidutil.createTestIdFromParts(testIdParts);
+            const testItem = this.lookupTestItemById(testItemId);
+            if (!testItem) {
+                this.log.bug(`Cannot find TestItem with ID ${testItemId}`);
+            } else {
+                reporter(testItem);
+            }
+        };
+
         session.stdout.on('line', line => {
             let match: RegExpMatchArray | null;
             this.log.test(line);
+            testRun.appendOutput(line + "\r\n");
 
             // case start
             match = /^(.+): Entering test case "(\w+)"$/.exec(line);
 
             if (match) {
-                currentTestId.push(match[2]);
-                progress({
-                    type: 'test',
-                    test: currentTestId.join('/'),
-                    state: 'running'
+                currentTestIdParts.push(match[2]);
+                reportProgress(currentTestIdParts, (testItem) => {
+                    testRun.started(testItem);
                 });
                 return;
             }
@@ -361,16 +156,17 @@ export class TestExecutable {
             match = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
 
             if (match) {
-                if (lastItem(currentTestId) !== match[2]) {
-                    this.log.error(`When parsing test output: '${lastItem(currentTestId)}' != '${match[2]}'`);
+                if (lastItem(currentTestIdParts) !== match[2]) {
+                    this.log.bug(`When parsing test output: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
                 }
-                progress({
-                    type: 'test',
-                    test: currentTestId.join('/'),
-                    state: error === undefined ? 'passed' : 'failed',
-                    message: error
+                reportProgress(currentTestIdParts, (testItem) => {
+                    if (error === undefined) {
+                        testRun.passed(testItem);
+                    } else {
+                        testRun.failed(testItem, new vscode.TestMessage(error));
+                    }
                 });
-                currentTestId.pop();
+                currentTestIdParts.pop();
                 error = undefined;
                 return;
             }
@@ -392,12 +188,9 @@ export class TestExecutable {
             match = /^(.+): Entering test suite "(\w+)"$/.exec(line);
 
             if (match) {
-                currentTestId.push(match[2]);
-
-                progress({
-                    type: 'suite',
-                    suite: currentTestId.join('/'),
-                    state: 'running'
+                currentTestIdParts.push(match[2]);
+                reportProgress(currentTestIdParts, (testItem) => {
+                    testRun.started(testItem);
                 });
                 return;
             }
@@ -406,15 +199,13 @@ export class TestExecutable {
             match = /^(.+): Leaving test suite "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
 
             if (match) {
-                if (lastItem(currentTestId) !== match[2]) {
-                    this.log.error(`When parsing test output: '${lastItem(currentTestId)}' != '${match[2]}'`);
+                if (lastItem(currentTestIdParts) !== match[2]) {
+                    this.log.bug(`When parsing test output: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
                 }
-                progress({
-                    type: 'suite',
-                    suite: currentTestId.join('/'),
-                    state: 'completed'
+                reportProgress(currentTestIdParts, (testItem) => {
+                    testRun.passed(testItem);
                 });
-                currentTestId.pop();
+                currentTestIdParts.pop();
                 return;
             }
         });
@@ -449,14 +240,14 @@ export class TestExecutable {
         }
     }
 
-    async debugTests(ids: string[], log: logger.MyLogger): Promise<void> {
+    async debugTests(testItems: vscode.TestItem[], log: logger.MyLogger): Promise<void> {
         if (typeof this.cfg.debugConfig !== 'string') {
             log.error(`Settings: debugConfig is not set for ${this.cfg.path}`, true);
             return;
         }
 
         let args = ['-l', 'all', '--catch_system_errors=no', '--detect_memory_leaks=0'];
-        const boostTestIds = this.createBoostTestIdsFrom(ids);
+        const boostTestIds = testidutil.createBoostTestIdsFrom(testItems);
         // If there are no valid boost test IDs then we run all the tests.
         if (boostTestIds.length > 0) {
             args = args.concat(['-t', boostTestIds.join(':')]);
@@ -487,8 +278,8 @@ export class TestExecutable {
         debugConfiguration["args"] = args;
         debugConfiguration["outputCapture"] = "std";
         const envMap = await this.createFinalEnvMap();
-        if (typeof envMap !== 'undefined') {
-            debugConfiguration["environment"] = this.createEnvForDebug(envMap);
+        if (envMap !== undefined) {
+            debugConfiguration["environment"] = createEnvForDebug(envMap);
         }
 
         await vscode.debug.startDebugging(undefined, debugConfiguration);
@@ -499,8 +290,8 @@ export class TestExecutable {
             cwd: this.cfg.cwd
         };
         const envMap = await this.createFinalEnvMap();
-        if (typeof envMap !== 'undefined') {
-            options.env = this.createEnvForSpawn(envMap);
+        if (envMap !== undefined) {
+            options.env = createEnvForSpawn(envMap);
         }
         const process = spawn(this.absPath, args, options);
         let stdout, stderr: ReadLine | undefined;
@@ -523,13 +314,33 @@ export class TestExecutable {
         }
     }
 
+    private lookupTestItemById(testItemId: string): vscode.TestItem | undefined {
+        if (!this.testItem) {
+            this.log.bug(`Tests are not loaded yet for ${this.cfg.path}`);
+            return undefined;
+        }
+        // First find the root of the tree.
+        let root: vscode.TestItem = this.testItem;
+        while (root.parent) {
+            root = root.parent;
+        }
+        // Then look for the item starting from the root.
+        const idParts = testidutil.getTestIdParts(testItemId);
+        let item: vscode.TestItem | undefined = root;
+        for (let level = 1; item && item.id !== testItemId; ++level) {
+            const nextTestItemId = testidutil.createChildTestId(item.id, idParts[level]);
+            item = item.children.get(nextTestItemId);
+        }
+        return item;
+    }
+
     private async createFinalEnvMap(): Promise<Map<string, string> | undefined> {
         let map: Map<string, string> | undefined;
-        if (typeof this.cfg.envFile !== 'undefined') {
+        if (this.cfg.envFile !== undefined) {
             map = await parseEnvFile(this.cfg.envFile, this.log);
         }
-        if (typeof this.cfg.env !== 'undefined') {
-            if (typeof map !== 'undefined') {
+        if (this.cfg.env !== undefined) {
+            if (map !== undefined) {
                 for (const [name, val] of this.cfg.env) {
                     map.set(name, val);
                 }
@@ -540,21 +351,46 @@ export class TestExecutable {
         return map;
     }
 
-    private createEnvForDebug(envMap: Map<string, string>): { name: string, value: string }[] {
-        let env: { name: string, value: string }[] = [];
-        for (const [n, v] of envMap) {
-            env.push({ name: n, value: v });
-        }
-        return env;
-    }
+}
 
-    private createEnvForSpawn(envMap: Map<string, string>): Record<string, string> {
-        // spawn() needs env as a plain object of (key, value) pairs.
-        let env: Record<string, string> = {};
-        for (const [n, v] of envMap) {
-            env[n] = v;
-        }
-        return env;
+async function parseEnvFile(
+    filePath: string,
+    log: logger.MyLogger): Promise<Map<string, string>> {
+    let envMap = new Map<string, string>();
+    try {
+        const contents: string = await fs.promises.readFile(filePath, 'utf-8');
+        contents.split(/\r?\n/).forEach((line) => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.length > 0) {
+                const eqPos = trimmedLine.indexOf('=');
+                if (eqPos !== -1) {
+                    const name = trimmedLine.substring(0, eqPos);
+                    const value = trimmedLine.substring(eqPos + 1);
+                    envMap.set(name, value);
+                } else {
+                    log.warn(`Settings: Bad line in envFile: '${trimmedLine}'`);
+                }
+            }
+        });
+    } catch (e) {
+        log.exception(e);
     }
+    return envMap;
+}
 
+function createEnvForDebug(envMap: Map<string, string>): { name: string, value: string }[] {
+    let env: { name: string, value: string }[] = [];
+    for (const [n, v] of envMap) {
+        env.push({ name: n, value: v });
+    }
+    return env;
+}
+
+function createEnvForSpawn(envMap: Map<string, string>): Record<string, string> {
+    // spawn() needs env as a plain object of (key, value) pairs.
+    let env: Record<string, string> = {};
+    for (const [n, v] of envMap) {
+        env[n] = v;
+    }
+    return env;
 }

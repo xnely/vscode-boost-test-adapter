@@ -1,6 +1,6 @@
 # Boost.Test Adapter
 This extension allows you to run your [Boost.Test](https://github.com/boostorg/test) tests
-using the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer).
+from the Testing sidebar of VS Code.
 
 ![debugger](https://github.com/feher/vscode-boost-test-adapter/raw/master/debug.gif)
 
@@ -9,14 +9,19 @@ This extension is based on code from these extensions:
 - https://github.com/newdigate/vscode-boost-test-adapter.git
 
 ## Features
-* Tests will appear in the [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
+* Tests will appear in the Testing sidebar of VS Code.
 * ```run``` or ```debug``` tests 
-  * from ```Test Explorer UI``` 
+  * from the ```Testing``` sidebar
   * from inside test source code
 * Output
   * Diagnostic info appears in the `Boost.Test Adapter` Output channel.
   * Running test output appears in the `Boost.Test Adapter` Output channel.
   * Debugged test output appears in the corresponding Terminal panel.
+
+## Changelog
+* Update 3.2.0
+  * Remove dependency on [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
+    * Use the native Test Explorer of VS Code.
 * Update 3.0.0
   * Add support for deeply nested test suites (multiple levels of test suites)
   * Add support for multiple test executables
@@ -63,12 +68,12 @@ This extension is based on code from these extensions:
 ```
 
 ## FAQ
-1. I don't see any tests in the Test Explorer UI. Why?
+1. I don't see any tests in the Testing sidebar. Why?
    - Make sure you have configured your `settings.json` and `launch.json` properly.
      - Take a look at the `Boost.Test Adapter` Output channel for potential issues.
-   - Press the reload button at the top of the Test Explorer UI.
+   - Press the reload button at the top of the Testing sidebar.
    - Restart VS Code.
-2. Why is my test-root called "Hello World" (or some other nonsense) in the Test Explorer UI?
+2. Why is my test-root called "Hello World" (or some other nonsense) in the Testing sidebar?
    - That is the Boost test module name. It comes from your test executable.
      Usually from a line like this:
      ```
@@ -76,4 +81,5 @@ This extension is based on code from these extensions:
      ``` 
 
 ## Features not implemented yet
-- When debugging a test, the red/green status of the test is not updated in the test explorer
+- Hiding/excluding tests.
+- When debugging a test, the red/green status of the test is not updated in the UI.

@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-var path = require('path');
+const path = require('path');
+const crypto = require("crypto");
+
+export function stringHash(s: string): string {
+    return crypto.createHash("sha1").update(s).digest("hex");
+}
 
 // detokenizeVariables is based on https://github.com/DominicVonk/vscode-variables
 export function detokenizeVariables(rawValue: string, recursive = false): string {
