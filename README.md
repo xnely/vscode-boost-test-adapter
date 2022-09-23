@@ -14,9 +14,9 @@ This extension is based on code from these extensions:
   * from the ```Testing``` sidebar
   * from inside test source code
 * Output
+  * Test output appears in Test Explorer's `Test Output` Terminal.
+  * During debugging the test output appears in the corresponding Terminal.
   * Diagnostic info appears in the `Boost.Test Adapter` Output channel.
-  * Running test output appears in the `Boost.Test Adapter` Output channel.
-  * Debugged test output appears in the corresponding Terminal panel.
 
 ## Changelog
 * Update 3.2.0
@@ -31,10 +31,13 @@ This extension is based on code from these extensions:
 ```json
     "boost-test-adapter-feher.tests": [
         {
-            // Mandatory: Path to a test executable. May be absolute or relative path.
-            "testExecutable": "build/Debug/main_test_1",
+            // Mandatory: Path to test executables. May be absolute or relative paths.
+            "testExecutables": [
+                "build/Debug/main_test_1",
+                "build/Debug/main_test_2"
+            ],
 
-            // Optional: The working directory for the test executable.
+            // Optional: The working directory for the test executables.
             "cwd": "${workspaceFolder}",
 
             // Mandatory: The name of the launch configuration used for debugging.
@@ -59,7 +62,7 @@ This extension is based on code from these extensions:
             "sourcePrefix": "${workspaceFolder}"
         },
         {
-            "testExecutable": "build/Debug/main_test_2",
+            "testExecutables": [ "build/Debug/other_test_2" ],
             "cwd": "${workspaceFolder}",
             "debugConfig": "Test config"
         }
