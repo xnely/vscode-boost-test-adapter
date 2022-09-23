@@ -85,7 +85,7 @@ export class TestExecutable {
         }
 
         let session: TestSession;
-        let error: string | undefined;
+        let errors: vscode.TestMessage[] = [];
 
         if (testItems.length === 0) {
             this.log.warn(`No test IDs were provided. Not running anything from ${this.cfg.path}`);
@@ -141,9 +141,8 @@ export class TestExecutable {
             this.log.test(line);
             testRun.appendOutput(line + "\r\n");
 
-            // case start
+            // test case start
             match = /^(.+): Entering test case "(\w+)"$/.exec(line);
-
             if (match) {
                 currentTestIdParts.push(match[2]);
                 reportProgress(currentTestIdParts, (testItem) => {
@@ -152,41 +151,50 @@ export class TestExecutable {
                 return;
             }
 
-            // case end
+            // test case end
             match = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
-
             if (match) {
                 if (lastItem(currentTestIdParts) !== match[2]) {
                     this.log.bug(`When parsing test output: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
                 }
                 reportProgress(currentTestIdParts, (testItem) => {
-                    if (error === undefined) {
+                    if (errors.length === 0) {
                         testRun.passed(testItem);
                     } else {
-                        testRun.failed(testItem, new vscode.TestMessage(error));
+                        testRun.failed(testItem, errors);
                     }
                 });
                 currentTestIdParts.pop();
-                error = undefined;
+                errors = [];
                 return;
             }
 
-            // case error
-            match = /^(.+): error: in "([\w\/]+)": (.+)$/.exec(line);
-            if (match) {
-                error = match[3];
-                return;
+            // test case error
+            match = /^(.+)\(([0-9]+)\): error: in "([\w\/]+)": (.+)$/.exec(line);
+            const handleErrorMatch = (m: RegExpMatchArray) => {
+                const file = m[1];
+                const lineStr = m[2];
+                const lineNum = Number(lineStr) - 1;
+                const msg = new vscode.TestMessage(m[4]);
+                msg.location = new vscode.Location(
+                    vscode.Uri.file(file),
+                    new vscode.Position(lineNum, 0));
+                errors.push(msg);
             }
-            // case fatal error
-            match = /^(.+): fatal error: in "([\w\/]+)": (.+)$/.exec(line);
             if (match) {
-                error = match[3];
+                handleErrorMatch(match);
                 return;
             }
 
-            // suite start
+            // test case fatal error
+            match = /^(.+)\(([0-9]+)\): fatal error: in "([\w\/]+)": (.+)$/.exec(line);
+            if (match) {
+                handleErrorMatch(match);
+                return;
+            }
+
+            // test suite start
             match = /^(.+): Entering test suite "(\w+)"$/.exec(line);
-
             if (match) {
                 currentTestIdParts.push(match[2]);
                 reportProgress(currentTestIdParts, (testItem) => {
