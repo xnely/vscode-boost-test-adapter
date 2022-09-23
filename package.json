@@ -58,9 +58,12 @@
             "type": "object",
             "description": "Test configuration.",
             "properties": {
-              "testExecutable": {
-                "description": "Absolute or relative path to a test executable.",
-                "type": "string"
+              "testExecutables": {
+                "description": "Absolute or relative path to test executables.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "debugConfig": {
                 "description": "The name of a launch configuration used for debugging.",

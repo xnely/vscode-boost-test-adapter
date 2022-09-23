@@ -20,83 +20,90 @@ export interface TestConfig {
 }
 
 export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: logger.MyLogger): Promise<TestConfig> {
+    const emptyTestConfig: TestConfig = {
+        testExes: []
+    };
     const testConfig: TestConfig = {
         testExes: []
     };
 
     const cfg = vscode.workspace.getConfiguration(BoosTestAdapterConfig);
 
-    if (!cfg.has('tests')) {
-        log.warn(`Settings: No ${BoosTestAdapterConfig}.tests found.`);
-        return testConfig;
-    }
     const cfgTests = cfg.get<Record<string, any>[]>('tests');
-    if (!cfgTests) {
-        return testConfig;
+    if (cfgTests === undefined) {
+        log.warn(`Settings: No ${BoosTestAdapterConfig}.tests found.`);
+        return emptyTestConfig;
+    }
+    if (cfgTests.length === 0) {
+        log.info(`Settings: ${BoosTestAdapterConfig}.tests is empty.`);
+        return emptyTestConfig;
     }
 
     for (const cfgTest of cfgTests) {
-        const testExe: TestExe = { path: "" };
-
-        if (typeof cfgTest.testExecutable !== 'string') {
-            log.error(`Settings: testExecutable must exist and it must be a string`);
-            continue;
-        }
-        testExe.path = util.detokenizeVariables(cfgTest.testExecutable);
-
-        if (cfgTest.debugConfig !== undefined) {
-            if (typeof cfgTest.debugConfig !== 'string') {
-                log.error(`Settings: debugConfig must be a string`);
-                continue;
-            }
-            testExe.debugConfig = cfgTest.debugConfig;
-        }
-        if (cfgTest.cwd !== undefined) {
-            if (typeof cfgTest.cwd !== 'string') {
-                log.error(`Settings: cwd must be a string`);
-                continue;
-            }
-            testExe.cwd = util.detokenizeVariables(cfgTest.cwd);
+        if (!(cfgTest.testExecutables instanceof Array)) {
+            log.error(`Settings: testExecutables must exist and it must be an array of strings`, true);
+            return emptyTestConfig;
         }
 
-        if (cfgTest.sourcePrefix !== undefined) {
-            if (typeof cfgTest.sourcePrefix !== 'string') {
-                log.error(`Settings: sourcePrefix must be a string`);
-                continue;
-            }
-            testExe.sourcePrefix = resolve(workspaceFolder.uri.fsPath, cfgTest.sourcePrefix);
-        }
+        for (const cfgTestExePath of cfgTest.testExecutables) {
+            const testExe: TestExe = {
+                path: util.detokenizeVariables(cfgTestExePath)
+            };
 
-        if (cfgTest.envFile !== undefined) {
-            if (typeof cfgTest.envFile !== 'string') {
-                log.error(`Settings: envFile must be a string`);
-                continue;
-            }
-            testExe.envFile = util.detokenizeVariables(cfgTest.envFile);
-        }
-
-        if (cfgTest.env !== undefined) {
-            if (!(cfgTest.env instanceof Array)) {
-                log.error(`Settings: env must be an array`);
-                continue;
-            }
-            let testEnvMap = new Map<string, string>();
-            for (const e of cfgTest.env) {
-                const cfgEnvvar = e as Record<string, any>;
-                if (typeof cfgEnvvar.name !== 'string') {
-                    log.error(`Settings: Environment variable name must be a string`)
-                    continue;
+            if (cfgTest.debugConfig !== undefined) {
+                if (typeof cfgTest.debugConfig !== 'string') {
+                    log.error(`Settings: debugConfig must be a string`, true);
+                    return emptyTestConfig;
                 }
-                if (typeof cfgEnvvar.value !== 'string') {
-                    log.error(`Settings: Environment variable value must be a string`)
-                    continue;
-                }
-                testEnvMap.set(cfgEnvvar.name, cfgEnvvar.value);
+                testExe.debugConfig = cfgTest.debugConfig;
             }
-            testExe.env = testEnvMap;
-        }
+            if (cfgTest.cwd !== undefined) {
+                if (typeof cfgTest.cwd !== 'string') {
+                    log.error(`Settings: cwd must be a string`);
+                    return emptyTestConfig;
+                }
+                testExe.cwd = util.detokenizeVariables(cfgTest.cwd);
+            }
 
-        testConfig.testExes.push(testExe);
+            if (cfgTest.sourcePrefix !== undefined) {
+                if (typeof cfgTest.sourcePrefix !== 'string') {
+                    log.error(`Settings: sourcePrefix must be a string`, true);
+                    return emptyTestConfig;
+                }
+                testExe.sourcePrefix = resolve(workspaceFolder.uri.fsPath, cfgTest.sourcePrefix);
+            }
+
+            if (cfgTest.envFile !== undefined) {
+                if (typeof cfgTest.envFile !== 'string') {
+                    log.error(`Settings: envFile must be a string`, true);
+                    return emptyTestConfig;
+                }
+                testExe.envFile = util.detokenizeVariables(cfgTest.envFile);
+            }
+
+            if (cfgTest.env !== undefined) {
+                if (!(cfgTest.env instanceof Array)) {
+                    log.error(`Settings: env must be an array`, true);
+                    return emptyTestConfig;
+                }
+                let testEnvMap = new Map<string, string>();
+                for (const e of cfgTest.env) {
+                    const cfgEnvvar = e as Record<string, any>;
+                    if (typeof cfgEnvvar.name !== 'string') {
+                        log.error(`Settings: Environment variable name must be a string`, true)
+                        return emptyTestConfig;
+                    }
+                    if (typeof cfgEnvvar.value !== 'string') {
+                        log.error(`Settings: Environment variable value must be a string`, true)
+                        return emptyTestConfig;
+                    }
+                    testEnvMap.set(cfgEnvvar.name, cfgEnvvar.value);
+                }
+                testExe.env = testEnvMap;
+            }
+
+            testConfig.testExes.push(testExe);
+        }
     }
 
     return testConfig;
