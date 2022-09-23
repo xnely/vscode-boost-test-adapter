@@ -84,6 +84,7 @@ export class AdapterManager {
         } else {
             included = request.include.map(item => item);
         }
+        included = this.keepOnlyAncestors(included);
         const inc = this.groupTestItemsByAdapter(included);
         if (request.profile.kind === vscode.TestRunProfileKind.Run) {
             token.onCancellationRequested(() => {
@@ -92,6 +93,7 @@ export class AdapterManager {
                 }
             });
             const run = this.ctrl.createTestRun(request);
+            this.enqueueTestItems(run, included);
             for (const [adapterId, testItems] of inc) {
                 const adapter = this.adapters.get(adapterId);
                 if (!adapter) {
@@ -111,6 +113,43 @@ export class AdapterManager {
                 await adapter.debug(testItems);
             }
         }
+    }
+
+    // If both a descendant test item and its ancestor is included
+    // then we remove the descendant and keep only the ancestor.
+    // I.e. we run every test under the ancestor.
+    private keepOnlyAncestors(testItems: vscode.TestItem[]): vscode.TestItem[] {
+        const isAncestorOf = (a: vscode.TestItem, b: vscode.TestItem): boolean => {
+            for (let n = b.parent; n !== undefined; n = n.parent) {
+                if (n === a) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const isAncestorPresentOf = (testItem: vscode.TestItem): boolean => {
+            return testItems.find(a => isAncestorOf(a, testItem)) !== undefined;
+        };
+        const onlyAncestors: vscode.TestItem[] = [];
+        for (const testItem of testItems) {
+            if (!isAncestorPresentOf(testItem)) {
+                onlyAncestors.push(testItem);
+            }
+        }
+        return onlyAncestors;
+    }
+
+    private enqueueTestItems(testRun: vscode.TestRun, testItems: vscode.TestItem[]) {
+        for (const testItem of testItems) {
+            this.enqueueTestItem(testRun, testItem);
+        }
+    }
+
+    private enqueueTestItem(testRun: vscode.TestRun, testItem: vscode.TestItem) {
+        testRun.enqueued(testItem);
+        testItem.children.forEach((childTestItem) => {
+            this.enqueueTestItem(testRun, childTestItem);
+        });
     }
 
     private groupTestItemsByAdapter(testItems: vscode.TestItem[]): Map<string, vscode.TestItem[]> {
