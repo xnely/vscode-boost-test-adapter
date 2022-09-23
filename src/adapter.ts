@@ -4,6 +4,7 @@ import * as logger from './logger';
 import { TestExecutable } from './test-executable';
 import * as config from './config';
 import * as testidutil from './testidutil';
+import * as util from './util';
 
 export class BoostTestAdapter {
     private readonly mutex: Mutex = new Mutex();
@@ -222,8 +223,9 @@ export class BoostTestAdapter {
     }
 
     private createTestExeId(testExePath: string): string {
-        const regex = /[\\/]/g;
-        return testidutil.createChildTestId(this.adapterId, testExePath.replace(regex, '_'));
+        return testidutil.createChildTestId(
+            this.adapterId,
+            util.stringHash(testExePath));
     }
 
     // If the adapter ID is present among the test IDs then
