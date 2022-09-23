@@ -12,6 +12,7 @@ export class BoostTestAdapter {
     private testExecutables: Map<string, TestExecutable> = new Map();
     private watchers: Map<string, vscode.FileSystemWatcher> = new Map();
     private testItem: vscode.TestItem;
+    private isRunCancelled = false;
 
     constructor(
         readonly adapterId: string,
@@ -92,6 +93,7 @@ export class BoostTestAdapter {
 
     async run(testRun: vscode.TestRun, testItems: vscode.TestItem[]): Promise<void> {
         const release = await this.mutex.acquire();
+        this.isRunCancelled = false;
         try {
             await this.runUnlocked(testRun, testItems);
         } finally {
@@ -109,6 +111,7 @@ export class BoostTestAdapter {
     }
 
     cancel() {
+        this.isRunCancelled = true;
         for (const [_, testExecutable] of this.testExecutables) {
             testExecutable.cancelTests(this.log);
         }
@@ -135,6 +138,9 @@ export class BoostTestAdapter {
         const resolvedItems = this.resolveAdapterItemsToTestExeItems(testItems);
         const m = this.groupTestItemsByTestExeId(resolvedItems);
         for (const [testExeId, testExeTestItems] of m) {
+            if (this.isRunCancelled) {
+                return;
+            }
             const testExe = this.testExecutables.get(testExeId);
             if (!testExe) {
                 this.log.bug(`Cannot find TestExecutable with ID '${testExeId}'.`);
