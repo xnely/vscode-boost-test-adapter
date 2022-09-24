@@ -62,6 +62,7 @@ export class AdapterManager {
     }
 
     async reloadTests(): Promise<void> {
+        this.log.info("Reloading tests");
         for (const [_, adapter] of this.adapters) {
             await adapter.reload();
             this.ctrl.items.add(adapter.getTestItem());
@@ -69,6 +70,7 @@ export class AdapterManager {
     }
 
     async resolveHandler(testItem: vscode.TestItem | undefined): Promise<void> {
+        this.log.info(`Resolving test '${testItem?.id}'`);
         if (testItem === undefined) {
             await this.reloadTests();
         } else {
