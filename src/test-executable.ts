@@ -7,6 +7,7 @@ import * as logger from './logger';
 import * as config from './config';
 import * as testidutil from './testidutil';
 import * as treebuilder from './test-tree-builder';
+import * as model from './model';
 
 const fs = require('fs');
 
@@ -77,7 +78,9 @@ export class TestExecutable {
         return this.testItem;
     }
 
-    async runTests(testRun: vscode.TestRun, testItems: vscode.TestItem[]): Promise<void> {
+    async runTests(
+        testRun: vscode.TestRun,
+        testItems: model.TestItem[]): Promise<void> {
 
         if (this.runningTests.length > 0) {
             this.log.warn(`Some tests are still running from ${this.cfg.path}`, true);
@@ -248,7 +251,7 @@ export class TestExecutable {
         }
     }
 
-    async debugTests(testItems: vscode.TestItem[], log: logger.MyLogger): Promise<void> {
+    async debugTests(testItems: model.TestItem[], log: logger.MyLogger): Promise<void> {
         if (typeof this.cfg.debugConfig !== 'string') {
             log.error(`Settings: debugConfig is not set for ${this.cfg.path}`, true);
             return;

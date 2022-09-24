@@ -5,6 +5,7 @@ import { TestExecutable } from './test-executable';
 import * as config from './config';
 import * as testidutil from './testidutil';
 import * as util from './util';
+import * as model from './model';
 
 export class BoostTestAdapter {
     private readonly mutex: Mutex = new Mutex();
@@ -91,7 +92,7 @@ export class BoostTestAdapter {
         }
     }
 
-    async run(testRun: vscode.TestRun, testItems: vscode.TestItem[]): Promise<void> {
+    async run(testRun: vscode.TestRun, testItems: model.TestItem[]): Promise<void> {
         const release = await this.mutex.acquire();
         this.isRunCancelled = false;
         try {
@@ -101,7 +102,7 @@ export class BoostTestAdapter {
         }
     }
 
-    async debug(testItems: vscode.TestItem[]): Promise<void> {
+    async debug(testItems: model.TestItem[]): Promise<void> {
         const release = await this.mutex.acquire();
         try {
             await this.debugUnlocked(testItems);
@@ -134,7 +135,9 @@ export class BoostTestAdapter {
         }
     }
 
-    private async runUnlocked(testRun: vscode.TestRun, testItems: vscode.TestItem[]): Promise<void> {
+    private async runUnlocked(
+        testRun: vscode.TestRun,
+        testItems: model.TestItem[]): Promise<void> {
         const resolvedItems = this.resolveAdapterItemsToTestExeItems(testItems);
         const m = this.groupTestItemsByTestExeId(resolvedItems);
         for (const [testExeId, testExeTestItems] of m) {
@@ -155,7 +158,7 @@ export class BoostTestAdapter {
         }
     }
 
-    private async debugUnlocked(testItems: vscode.TestItem[]): Promise<void> {
+    private async debugUnlocked(testItems: model.TestItem[]): Promise<void> {
         const resolvedItems = this.resolveAdapterItemsToTestExeItems(testItems);
         const m = this.groupTestItemsByTestExeId(resolvedItems);
         if (m.size > 1) {
@@ -163,7 +166,7 @@ export class BoostTestAdapter {
             return;
         }
 
-        const testExeId = testidutil.getTestExeId(resolvedItems[0].id);
+        const testExeId = testidutil.getTestExeId(resolvedItems[0].id());
         const testExecutable = this.testExecutables.get(testExeId)!;
         await testExecutable.debugTests(resolvedItems, this.log);
     }
@@ -237,16 +240,16 @@ export class BoostTestAdapter {
     // If the adapter ID is present among the test IDs then
     // include all of the test-exe-ids into the list.
     // I.e. we want to include every test executable.
-    private resolveAdapterItemsToTestExeItems(testItems: vscode.TestItem[]): vscode.TestItem[] {
-        const resolvedTestItems: vscode.TestItem[] = [];
+    private resolveAdapterItemsToTestExeItems(testItems: model.TestItem[]): model.TestItem[] {
+        const resolvedTestItems: model.TestItem[] = [];
         for (const testItem of testItems) {
-            if (testItem.id === this.adapterId) {
+            if (testItem.id() === this.adapterId) {
                 for (const [_, testExe] of this.testExecutables) {
                     if (!testExe.testItem) {
                         this.log.bug(`testExe.testItem is undefined for ${testExe.cfg.path}`);
                         continue;
                     }
-                    resolvedTestItems.push(testExe.testItem);
+                    resolvedTestItems.push(new model.TestItem(testExe.testItem, false));
                 }
             } else {
                 resolvedTestItems.push(testItem);
@@ -258,10 +261,10 @@ export class BoostTestAdapter {
     // Groups the test IDs by their test-exe-id component.
     // The test IDs have this format:
     // "test-exe-id/suite-1/suite-2/.../test-case"
-    private groupTestItemsByTestExeId(testItems: vscode.TestItem[]): Map<string, vscode.TestItem[]> {
-        const m: Map<string, vscode.TestItem[]> = new Map();
+    private groupTestItemsByTestExeId(testItems: model.TestItem[]): Map<string, model.TestItem[]> {
+        const m: Map<string, model.TestItem[]> = new Map();
         for (const testItem of testItems) {
-            const testExeId = testidutil.getTestExeId(testItem.id);
+            const testExeId = testidutil.getTestExeId(testItem.id());
             if (m.has(testExeId)) {
                 m.get(testExeId)!.push(testItem);
             } else {

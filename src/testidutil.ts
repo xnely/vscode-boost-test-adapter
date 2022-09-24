@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import * as model from './model';
 
 export function createChildTestId(parentId: string, childId: string) {
 	return `${parentId}/${childId}`;
@@ -30,10 +30,10 @@ export function getTestExeId(testId: string): string {
 //
 // We must remove the test-exe-id because that is
 // not part of the Boost test ID.
-export function createBoostTestIdsFrom(testItems: vscode.TestItem[]): string[] {
+export function createBoostTestIdsFrom(testItems: model.TestItem[]): string[] {
 	const boostTestIds: string[] = [];
 	for (const testItem of testItems) {
-		const testId = testItem.id;
+		const testId = testItem.id();
 		const idParts = getTestIdParts(testId);
 		if (idParts.length < 3) {
 			continue;
@@ -42,7 +42,11 @@ export function createBoostTestIdsFrom(testItems: vscode.TestItem[]): string[] {
 		if (boostTestId.length === 0) {
 			continue;
 		}
-		boostTestIds.push(boostTestId);
+		if (testItem.isExcluded) {
+			boostTestIds.push(`!${boostTestId}`);
+		} else {
+			boostTestIds.push(boostTestId);
+		}
 	}
 	return boostTestIds;
 }

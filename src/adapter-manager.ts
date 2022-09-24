@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as logger from './logger';
 import * as util from './util';
 import * as testidutil from './testidutil';
+import * as model from './model';
 import { BoostTestAdapter } from './adapter';
 
 export class AdapterManager {
@@ -71,10 +72,7 @@ export class AdapterManager {
         if (!request.profile) {
             return;
         }
-        if (request.exclude !== undefined && request.exclude.length > 0) {
-            this.log.error("Excluding (hiding) tests is not supported yet :(", true);
-            return;
-        }
+
         let included: vscode.TestItem[] = [];
         if (request.include === undefined) {
             // We must run all the tests if vscode.TestRunRequest.include is undefined.
@@ -85,7 +83,17 @@ export class AdapterManager {
             included = request.include.map(item => item);
         }
         included = this.keepOnlyAncestors(included);
-        const inc = this.groupTestItemsByAdapter(included);
+
+        let excluded: vscode.TestItem[] = [];
+        if (request.exclude !== undefined && request.exclude.length > 0) {
+            excluded = request.exclude.map(item => item);
+        }
+        excluded = this.keepOnlyAncestors(excluded);
+
+        let mergedItems: model.TestItem[] = included.map(item => new model.TestItem(item, false));
+        mergedItems = mergedItems.concat(excluded.map(item => new model.TestItem(item, true)));
+
+        const groupedItems = this.groupTestItemsByAdapter(mergedItems);
         if (request.profile.kind === vscode.TestRunProfileKind.Run) {
             token.onCancellationRequested(() => {
                 for (const [_, adapter] of this.adapters) {
@@ -94,7 +102,7 @@ export class AdapterManager {
             });
             const run = this.ctrl.createTestRun(request);
             this.enqueueTestItems(run, included);
-            for (const [adapterId, testItems] of inc) {
+            for (const [adapterId, testItems] of groupedItems) {
                 const adapter = this.adapters.get(adapterId);
                 if (!adapter) {
                     this.log.bug(`Cannot find adapter with ID '${adapterId}'`);
@@ -104,7 +112,7 @@ export class AdapterManager {
             }
             run.end();
         } else if (request.profile.kind === vscode.TestRunProfileKind.Debug) {
-            for (const [adapterId, testItems] of inc) {
+            for (const [adapterId, testItems] of groupedItems) {
                 const adapter = this.adapters.get(adapterId);
                 if (!adapter) {
                     this.log.bug(`Cannot find adapter with ID '${adapterId}'`);
@@ -152,10 +160,10 @@ export class AdapterManager {
         });
     }
 
-    private groupTestItemsByAdapter(testItems: vscode.TestItem[]): Map<string, vscode.TestItem[]> {
-        const m = new Map<string, vscode.TestItem[]>();
+    private groupTestItemsByAdapter(testItems: model.TestItem[]): Map<string, model.TestItem[]> {
+        const m = new Map<string, model.TestItem[]>();
         for (const testItem of testItems) {
-            const adapterId = testidutil.getAdapterId(testItem.id);
+            const adapterId = testidutil.getAdapterId(testItem.id());
             if (m.has(adapterId)) {
                 m.get(adapterId)!.push(testItem);
             } else {

@@ -84,5 +84,4 @@ This extension is based on code from these extensions:
      ``` 
 
 ## Features not implemented yet
-- Hiding/excluding tests.
 - When debugging a test, the red/green status of the test is not updated in the UI.
