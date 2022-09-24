@@ -55,7 +55,7 @@ export class BoostTestAdapter {
     }
 
     private async updateSettingsUnlocked(): Promise<void> {
-        this.clearWatchers();
+        this.clearTestExeWatchers();
         this.testExecutables.clear();
 
         const cfg = await config.getConfig(this.workspaceFolder, this.log);
@@ -64,6 +64,7 @@ export class BoostTestAdapter {
             const testExeTestItemId = this.createTestExeId(cfgTestExe.path);
             this.testExecutables.set(testExeTestItemId, new TestExecutable(
                 testExeTestItemId,
+                this.ctrl,
                 this.workspaceFolder,
                 cfgTestExe,
                 this.log));
@@ -76,14 +77,14 @@ export class BoostTestAdapter {
 
     dispose() {
         this.cancel();
-        this.clearWatchers();
+        this.clearTestExeWatchers();
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
         this.disposables.length = 0;
     }
 
-    async load(): Promise<void> {
+    private async load(): Promise<void> {
         const release = await this.mutex.acquire();
         try {
             await this.loadUnlocked();
@@ -119,19 +120,15 @@ export class BoostTestAdapter {
     }
 
     private async loadUnlocked(): Promise<void> {
-        this.clearWatchers();
         this.testItem.children.replace([]);
 
         if (this.testExecutables.size === 0) {
-            await this.updateSettingsUnlocked();
-            if (this.testExecutables.size === 0) {
-                this.log.info('No valid test executables found. Cannot load tests.');
-                return;
-            }
+            this.log.info('No valid test executables found. Cannot load tests.');
+            return;
         }
 
         for (const [_, testExecutable] of this.testExecutables) {
-            await this.loadOneUnlocked(testExecutable);
+            await this.loadTestExeUnlocked(testExecutable);
         }
     }
 
@@ -171,19 +168,27 @@ export class BoostTestAdapter {
         await testExecutable.debugTests(resolvedItems, this.log);
     }
 
-    private async loadOne(testExecutable: TestExecutable): Promise<void> {
+    async resolveTestExeTests(testItem: vscode.TestItem): Promise<void> {
         const release = await this.mutex.acquire();
         try {
-            await this.loadOneUnlocked(testExecutable);
+            await this.resolveTestExeTestsUnlocked(testItem);
         } finally {
             release();
         }
     }
 
-    private async loadOneUnlocked(testExecutable: TestExecutable): Promise<void> {
-        this.addTestExeWatcher(testExecutable);
+    private async resolveTestExeTestsUnlocked(testItem: vscode.TestItem): Promise<void> {
+        const testExe = this.getTestExeOf(testItem);
+        if (testExe === undefined) {
+            this.log.bug(`Cannot find TestExecutable for TestItem '${testItem.id}'`);
+            return;
+        }
+        this.addTestExeWatcher(testExe);
+        await testExe.loadTests();
+    }
+
+    private async loadTestExeUnlocked(testExecutable: TestExecutable): Promise<void> {
         try {
-            await testExecutable.loadTests(this.ctrl);
             this.testItem.children.add(testExecutable.getTestItem());
         } catch (e) {
             this.log.exception(e);
@@ -195,20 +200,20 @@ export class BoostTestAdapter {
         // start watching test binary
         if (this.watchers.has(key)) {
             return;
-
         }
+        this.log.info(`Watching test executable: ${testExecutable.cfg.path}`);
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(this.workspaceFolder, testExecutable.cfg.path));
 
         try {
             const load = async (e: vscode.Uri) => {
-                this.log.info(`Test executable has changed: ${testExecutable.cfg.path}`);
+                this.log.info(`Test executable changed: ${testExecutable.cfg.path}`);
                 if (e.fsPath !== testExecutable.absPath) {
                     this.log.warn(`Paths don't match: ${e.fsPath} should be ${testExecutable.absPath}`);
                     return;
                 }
                 try {
-                    await this.loadOne(testExecutable);
+                    await this.resolveTestExeTests(testExecutable.getTestItem());
                 } catch (e) {
                     this.log.exception(e);
                 }
@@ -224,7 +229,7 @@ export class BoostTestAdapter {
         }
     }
 
-    private clearWatchers() {
+    private clearTestExeWatchers() {
         for (const [_, watcher] of this.watchers) {
             watcher.dispose();
         }
@@ -272,5 +277,9 @@ export class BoostTestAdapter {
             }
         }
         return m;
+    }
+
+    private getTestExeOf(testItem: vscode.TestItem): TestExecutable | undefined {
+        return this.testExecutables.get(testidutil.getTestExeId(testItem.id));
     }
 }

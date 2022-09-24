@@ -18,25 +18,38 @@ interface TestSession {
     readonly process: ChildProcess;
 }
 
-export class BinaryError extends Error {
-    constructor(readonly cause: any, testExePath: string, cwd?: string) {
-        super(`Cannot execute ${testExePath} (cwd is ${cwd}).`);
-    }
-}
-
 export class TestExecutable {
     absPath: string;
     runningTests: TestSession[] = [];
-    testItem?: vscode.TestItem;
+    testItem: vscode.TestItem;
     constructor(
         readonly testExeTestItemId: string,
+        readonly ctrl: vscode.TestController,
         readonly workspaceFolder: vscode.WorkspaceFolder,
         readonly cfg: config.TestExe,
         readonly log: logger.MyLogger) {
         this.absPath = resolve(this.workspaceFolder.uri.fsPath, this.cfg.path);
+
+        this.testItem = this.ctrl.createTestItem(
+            this.testExeTestItemId,
+            `${this.cfg.path} (Open to load tests)`,
+            vscode.Uri.file(this.absPath));
+        // We load the tests from the test exe only when requested.
+        this.testItem.canResolveChildren = true;
     }
 
-    async loadTests(ctrl: vscode.TestController): Promise<void> {
+    async loadTests(): Promise<void> {
+        this.testItem.busy = true;
+        const ok = await this.doLoadTests();
+        if (!ok) {
+            this.testItem.label = `${this.cfg.path} (Failed to load tests)`;
+            this.testItem.children.replace([]);
+            this.testItem.canResolveChildren = true;
+        }
+        this.testItem.busy = false;
+    }
+
+    private async doLoadTests(): Promise<boolean> {
         this.log.info(`Loading tests from ${this.cfg.path}`);
 
         // gather all output
@@ -49,32 +62,41 @@ export class TestExecutable {
         try {
             exit = await session.stopped;
         } catch (e) {
-            throw new BinaryError(e, this.absPath, this.cfg.cwd);
+            this.log.error(`Cannot execute ${this.absPath} (cwd is ${this.cfg.cwd}).`);
+            return false;
         }
 
         if (exit !== 0) {
-            throw new Error(`${this.cfg.path} exited with code ${exit}`);
+            this.log.error(`${this.cfg.path} exited with code ${exit}`);
+            return false;
         }
 
         // parse the output
         const graphs = parseDot(output);
         if (graphs.length === 0) {
-            throw new Error(`Failed to parse list of test cases from ${this.cfg.path}`);
+            this.log.error(`Failed to parse list of test cases from ${this.cfg.path}`);
+            return false;
         }
 
         // extract test module information
-        this.testItem = treebuilder.createTestExeTestItem(
+        const loadedTestItem = treebuilder.createTestExeTestItem(
             this.absPath,
             this.testExeTestItemId,
             this.cfg.sourcePrefix,
             graphs,
-            ctrl);
+            this.ctrl);
+        const children: vscode.TestItem[] = [];
+        loadedTestItem.children.forEach((item, _) => {
+            children.push(item);
+        });
+        this.testItem.label = loadedTestItem.label;
+        this.testItem.children.replace(children);
+        this.testItem.canResolveChildren = false;
+
+        return true;
     }
 
     getTestItem(): vscode.TestItem {
-        if (!this.testItem) {
-            throw Error(`TestItem is undefined for ${this.cfg.path}`);
-        }
         return this.testItem;
     }
 

@@ -61,10 +61,23 @@ export class AdapterManager {
             this.log);
     }
 
-    async loadTests(): Promise<void> {
+    async reloadTests(): Promise<void> {
         for (const [_, adapter] of this.adapters) {
-            await adapter.load();
+            await adapter.reload();
             this.ctrl.items.add(adapter.getTestItem());
+        }
+    }
+
+    async resolveHandler(testItem: vscode.TestItem | undefined): Promise<void> {
+        if (testItem === undefined) {
+            await this.reloadTests();
+        } else {
+            const adapter = this.getAdapterOf(testItem);
+            if (adapter === undefined) {
+                this.log.bug(`Cannot find adapter for TestItem '${testItem.id}'`);
+                return;
+            }
+            adapter.resolveTestExeTests(testItem);
         }
     }
 
@@ -171,5 +184,10 @@ export class AdapterManager {
             }
         }
         return m;
+    }
+
+    private getAdapterOf(testItem: vscode.TestItem): BoostTestAdapter | undefined {
+        const adapterId = testidutil.getAdapterId(testItem.id);
+        return this.adapters.get(adapterId);
     }
 }

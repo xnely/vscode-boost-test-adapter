@@ -13,10 +13,14 @@ export async function activate(context: vscode.ExtensionContext) {
     const adapterManager = new AdapterManager(ctrl, log);
     context.subscriptions.push(adapterManager);
 
-    await adapterManager.loadTests();
+    await adapterManager.reloadTests();
 
     ctrl.refreshHandler = () => {
-        return adapterManager.loadTests();
+        return adapterManager.reloadTests();
+    };
+
+    ctrl.resolveHandler = (testItem) => {
+        adapterManager.resolveHandler(testItem);
     };
 
     ctrl.createRunProfile(

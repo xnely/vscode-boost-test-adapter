@@ -9,7 +9,7 @@ export function createTestExeTestItem(
     testItemId: string,
     sourcePrefix: string | undefined,
     graphs: parseDot.Graph[],
-    ctrl: vscode.TestController) {
+    ctrl: vscode.TestController): vscode.TestItem {
     // extract module information
     const root = graphs[0];
 
