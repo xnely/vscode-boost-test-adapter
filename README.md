@@ -2,11 +2,6 @@
 This extension allows you to run your [Boost.Test](https://github.com/boostorg/test) tests
 from the Testing sidebar of VS Code.
 
-## Credits
-This extension is based on code from these extensions:
-- https://github.com/firoorg/vscode-boost-test-adapter
-- https://github.com/newdigate/vscode-boost-test-adapter.git
-
 ## Screenshot
 ![screenshot](screenshot.png)
 
@@ -19,14 +14,6 @@ This extension is based on code from these extensions:
   * Test output appears in the `Test Output` Terminal of the Testing sidebar.
   * During debugging the test output appears in the corresponding Terminal.
   * Diagnostic info appears in the `Boost.Test Adapter` Output channel.
-
-## Changelog
-* Update 3.2.0
-  * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.
-* Update 3.0.0
-  * Add support for deeply nested test suites (multiple levels of test suites)
-  * Add support for multiple test executables
-  * Add support for cancelling tests
 
 ## Configurations
 ```json
@@ -87,3 +74,15 @@ This extension is based on code from these extensions:
 ## Features not implemented yet
 - When debugging a test, the red/green status of the test is not updated in the UI.
 
+## Credits
+This extension is based on code from these extensions:
+- https://github.com/firoorg/vscode-boost-test-adapter
+- https://github.com/newdigate/vscode-boost-test-adapter.git
+
+## Changelog
+* Update 3.2.0
+  * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.
+* Update 3.0.0
+  * Add support for deeply nested test suites (multiple levels of test suites)
+  * Add support for multiple test executables
+  * Add support for cancelling tests
