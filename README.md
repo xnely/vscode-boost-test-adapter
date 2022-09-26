@@ -28,8 +28,10 @@ from the Testing sidebar of VS Code.
             // Optional: The working directory for the test executables.
             "cwd": "${workspaceFolder}",
 
-            // Mandatory: The name of the launch configuration used for debugging.
-            // The 'program' and 'args' options will be overwritten by this extension. 
+            // Mandatory: The name of a launch configuration that should be used
+            // when debugging the tests.
+            // The 'program' and 'args' options of the given launch config will
+            // be overwritten by this extension.
             "debugConfig": "Test config",
 
             // Optional: A simple key=value file with environment variables for running and debugging the tests.
@@ -81,6 +83,8 @@ This extension is based on code from these extensions:
 
 ## Changelog
 * Update 3.2.x
+  * Add a `Copy Boost.Test ID` conext menu. It allows to copy the Boost test ID (test path) of a
+    test-case or test-suite to the clipboard for [test unit filtering](https://www.boost.org/doc/libs/1_80_0/libs/test/doc/html/boost_test/runtime_config/test_unit_filtering.html).
   * Bug fixes.
 * Update 3.2.0
   * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.

@@ -1,5 +1,11 @@
 import * as model from './model';
 
+//
+// IMPORTANT!
+// If you change the format of the IDs then make sure you update the regex for the
+// boost-test-adapter-feher.copyBoostTestId command in package.json.
+//
+
 export function createChildTestId(parentId: string, childId: string) {
 	return `${parentId}/${childId}`;
 }
@@ -30,16 +36,25 @@ export function getTestExeId(testId: string): string {
 //
 // We must remove the test-exe-id because that is
 // not part of the Boost test ID.
+export function createBoostTestIdFrom(testId: string): string | undefined {
+	const idParts = getTestIdParts(testId);
+	if (idParts.length < 3) {
+		return;
+	}
+	const boostTestId = idParts.slice(2).join('/');
+	if (boostTestId.length === 0) {
+		return;
+	}
+	return boostTestId;
+}
+
+// Creates Boost test IDs for the given TestItems.
+// It also adds the "!" prefix for excluded items.
 export function createBoostTestIdsFrom(testItems: model.TestItem[]): string[] {
 	const boostTestIds: string[] = [];
 	for (const testItem of testItems) {
-		const testId = testItem.id();
-		const idParts = getTestIdParts(testId);
-		if (idParts.length < 3) {
-			continue;
-		}
-		const boostTestId = idParts.slice(2).join('/');
-		if (boostTestId.length === 0) {
+		const boostTestId = createBoostTestIdFrom(testItem.id());
+		if (boostTestId === undefined) {
 			continue;
 		}
 		if (testItem.isExcluded) {

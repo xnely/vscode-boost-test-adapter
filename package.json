@@ -105,6 +105,51 @@
           "scope": "resource"
         }
       }
+    },
+    "commands": [
+      {
+        "command": "boost-test-adapter-feher.copyTestItemPath",
+        "title": "Copy Path"
+      },
+      {
+        "command": "boost-test-adapter-feher.copyTestItemRelativePath",
+        "title": "Copy Relative Path"
+      },
+      {
+        "command": "boost-test-adapter-feher.copyBoostTestId",
+        "title": "Copy Boost.Test ID"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "boost-test-adapter-feher.copyTestItemPath",
+          "when": "false"
+        },
+        {
+          "command": "boost-test-adapter-feher.copyTestItemRelativePath",
+          "when": "false"
+        },
+        {
+          "command": "boost-test-adapter-feher.copyBoostTestId",
+          "when": "false"
+        }
+      ],
+      "testing/item/context": [
+        {
+          "command": "boost-test-adapter-feher.copyTestItemPath",
+          "group": "copypath@1"
+        },
+        {
+          "command": "boost-test-adapter-feher.copyTestItemRelativePath",
+          "group": "copypath@2"
+        },
+        {
+          "command": "boost-test-adapter-feher.copyBoostTestId",
+          "group": "copypath@3",
+          "when": "testId =~ /^[a-f0-9]+\/[a-f0-9]+\/.+$/"
+        }
+      ]
     }
   }
 }

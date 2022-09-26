@@ -138,6 +138,38 @@ export class AdapterManager {
         }
     }
 
+    async commandCopyBoostTestId(testItem: vscode.TestItem) {
+        const boostTestId = testidutil.createBoostTestIdFrom(testItem.id);
+        if (boostTestId !== undefined) {
+            await vscode.env.clipboard.writeText(boostTestId);
+        }
+    }
+
+    async commandCopyTestItemPath(testItem: vscode.TestItem, relative: boolean) {
+        const path = testItem.uri?.fsPath;
+        if (path === undefined) {
+            this.log.bug(`TestItem URI is ${path}.`);
+            return;
+        }
+        const adapter = this.getAdapterOf(testItem);
+        if (adapter === undefined) {
+            this.log.bug(`Cannot find adapter for TestItem '${testItem.id}'`);
+            return;
+        }
+        const workspacePath = adapter.workspaceFolder.uri.fsPath;
+        if (!path.startsWith(workspacePath)) {
+            this.log.bug(`TestItem URI '${path}' should start with '${workspacePath}'`);
+            return;
+        }
+        if (relative) {
+            // +1 to skip the path separator (slash or backslash).
+            const relativePath = path.substring(workspacePath.length + 1);
+            await vscode.env.clipboard.writeText(relativePath);
+        } else {
+            await vscode.env.clipboard.writeText(path);
+        }
+    }
+
     // If both a descendant test item and its ancestor is included
     // then we remove the descendant and keep only the ancestor.
     // I.e. we run every test under the ancestor.

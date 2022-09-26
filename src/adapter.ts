@@ -18,7 +18,7 @@ export class BoostTestAdapter {
     constructor(
         readonly adapterId: string,
         private readonly ctrl: vscode.TestController,
-        private readonly workspaceFolder: vscode.WorkspaceFolder,
+        readonly workspaceFolder: vscode.WorkspaceFolder,
         private readonly log: logger.MyLogger) {
 
         log.info("Initializing adapter.");
