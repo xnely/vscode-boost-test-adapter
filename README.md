@@ -2,6 +2,7 @@
 This extension allows you to run your [Boost.Test](https://github.com/boostorg/test) tests
 from the Testing sidebar of VS Code.
 
+## Credits
 This extension is based on code from these extensions:
 - https://github.com/firoorg/vscode-boost-test-adapter
 - https://github.com/newdigate/vscode-boost-test-adapter.git
@@ -21,8 +22,7 @@ This extension is based on code from these extensions:
 
 ## Changelog
 * Update 3.2.0
-  * Remove dependency on [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
-    * Use the native Test Explorer of VS Code.
+  * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.
 * Update 3.0.0
   * Add support for deeply nested test suites (multiple levels of test suites)
   * Add support for multiple test executables
