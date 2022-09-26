@@ -80,6 +80,8 @@ This extension is based on code from these extensions:
 - https://github.com/newdigate/vscode-boost-test-adapter.git
 
 ## Changelog
+* Update 3.2.x
+  * Bug fixes.
 * Update 3.2.0
   * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.
 * Update 3.0.0

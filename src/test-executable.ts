@@ -22,6 +22,14 @@ export class TestExecutable {
     absPath: string;
     runningTests: TestSession[] = [];
     testItem: vscode.TestItem;
+
+    private readonly regexEnterTestSuite = /^(.+): Entering test suite "(\w+)"$/;
+    private readonly regexLeaveTestSuite = /^(.+): Leaving test suite "(\w+)"; testing time: (\d+)(\w+)$/;
+    private readonly regexEnterTestCase = /^(.+): Entering test case "(\w+)"$/;
+    private readonly regexLeaveTestCase = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/;
+    private readonly regexTestCaseError = /^(.+)\(([0-9]+)\): error: in "([\w\/]+)": (.+)$/;
+    private readonly regexTestCaseFatalError = /^(.+)\(([0-9]+)\): fatal error: in "([\w\/]+)": (.+)$/;
+
     constructor(
         readonly testExeTestItemId: string,
         readonly ctrl: vscode.TestController,
@@ -109,19 +117,21 @@ export class TestExecutable {
             return;
         }
 
-        let session: TestSession;
-        let errors: vscode.TestMessage[] = [];
-
         if (testItems.length === 0) {
             this.log.warn(`No test IDs were provided. Not running anything from ${this.cfg.path}`);
             return;
         }
 
+        let session: TestSession;
+        let errors: vscode.TestMessage[] = [];
+        let isInsideTestCase = false;
+        let isParsingError = false;
+
         // spawn the test process
         const boostTestIds = testidutil.createBoostTestIdsFrom(testItems);
         const args = [
             '-l', 'test_suite',
-            '--catch_system_errors=no',
+            '--catch_system_errors=yes',
             '--detect_memory_leaks=0',
             '--color_output=no'];
         if (boostTestIds.length > 0) {
@@ -161,66 +171,103 @@ export class TestExecutable {
             }
         };
 
+        const enterTestCase = (testCaseName: string) => {
+            currentTestIdParts.push(testCaseName);
+            reportProgress(currentTestIdParts, (testItem) => {
+                testRun.started(testItem);
+            });
+            isInsideTestCase = true;
+        };
+
+        // If "force" is true we "force-leave" the test-case.
+        // This is needed if a test-case never "leaves" (for whatever unknown reason).
+        const leaveTestCase = (force: boolean) => {
+            reportProgress(currentTestIdParts, (testItem) => {
+                if (force) {
+                    testRun.errored(testItem, errors);
+                } else if (errors.length === 0) {
+                    testRun.passed(testItem);
+                } else {
+                    testRun.failed(testItem, errors);
+                }
+            });
+            currentTestIdParts.pop();
+            errors = [];
+            isInsideTestCase = false;
+        };
+
+        const handleErrorMatch = (m: RegExpMatchArray) => {
+            const msg = new vscode.TestMessage(m[4]);
+            const file = m[1];
+            if (file !== 'unknown location') {
+                const lineStr = m[2];
+                const lineNum = Math.max(0, Number(lineStr) - 1);
+                const uri = vscode.Uri.file(file);
+                const pos = new vscode.Position(lineNum, 0);
+                msg.location = new vscode.Location(uri, pos);
+            }
+            errors.push(msg);
+        }
+
         session.stdout.on('line', line => {
             let match: RegExpMatchArray | null;
             this.log.test(line);
             testRun.appendOutput(line + "\r\n");
 
+            if (isParsingError) {
+                // The parser got messed up.
+                return;
+            }
+
             // test case start
-            match = /^(.+): Entering test case "(\w+)"$/.exec(line);
+            match = this.regexEnterTestCase.exec(line);
             if (match) {
-                currentTestIdParts.push(match[2]);
-                reportProgress(currentTestIdParts, (testItem) => {
-                    testRun.started(testItem);
-                });
+                if (isInsideTestCase) {
+                    leaveTestCase(true);
+                }
+                enterTestCase(match[2]);
                 return;
             }
 
             // test case end
-            match = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
+            match = this.regexLeaveTestCase.exec(line);
             if (match) {
                 if (lastItem(currentTestIdParts) !== match[2]) {
-                    this.log.bug(`When parsing test output: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
+                    this.log.bug(`Parsing error: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
+                    isParsingError = true;
                 }
-                reportProgress(currentTestIdParts, (testItem) => {
-                    if (errors.length === 0) {
-                        testRun.passed(testItem);
-                    } else {
-                        testRun.failed(testItem, errors);
-                    }
-                });
-                currentTestIdParts.pop();
-                errors = [];
+                leaveTestCase(false);
                 return;
             }
 
             // test case error
-            match = /^(.+)\(([0-9]+)\): error: in "([\w\/]+)": (.+)$/.exec(line);
-            const handleErrorMatch = (m: RegExpMatchArray) => {
-                const file = m[1];
-                const lineStr = m[2];
-                const lineNum = Number(lineStr) - 1;
-                const msg = new vscode.TestMessage(m[4]);
-                msg.location = new vscode.Location(
-                    vscode.Uri.file(file),
-                    new vscode.Position(lineNum, 0));
-                errors.push(msg);
-            }
+            match = this.regexTestCaseError.exec(line);
             if (match) {
-                handleErrorMatch(match);
+                if (isInsideTestCase) {
+                    handleErrorMatch(match);
+                } else {
+                    this.log.bug(`We are in '${lastItem(currentTestIdParts)}'. This is not a test-case.`);
+                }
                 return;
             }
 
             // test case fatal error
-            match = /^(.+)\(([0-9]+)\): fatal error: in "([\w\/]+)": (.+)$/.exec(line);
+            match = this.regexTestCaseFatalError.exec(line);
             if (match) {
-                handleErrorMatch(match);
+                if (isInsideTestCase) {
+                    handleErrorMatch(match);
+                } else {
+                    this.log.bug(`We are in '${lastItem(currentTestIdParts)}'. This is not a test-case.`);
+                }
                 return;
             }
 
             // test suite start
-            match = /^(.+): Entering test suite "(\w+)"$/.exec(line);
+            match = this.regexEnterTestSuite.exec(line);
             if (match) {
+                if (isInsideTestCase) {
+                    leaveTestCase(true);
+                }
                 currentTestIdParts.push(match[2]);
                 reportProgress(currentTestIdParts, (testItem) => {
                     testRun.started(testItem);
@@ -228,12 +275,15 @@ export class TestExecutable {
                 return;
             }
 
-            // suite end
-            match = /^(.+): Leaving test suite "(\w+)"; testing time: (\d+)(\w+)$/.exec(line);
-
+            // test suite end
+            match = this.regexLeaveTestSuite.exec(line);
             if (match) {
+                if (isInsideTestCase) {
+                    leaveTestCase(true);
+                }
                 if (lastItem(currentTestIdParts) !== match[2]) {
-                    this.log.bug(`When parsing test output: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
+                    this.log.bug(`Parsing error: '${lastItem(currentTestIdParts)}' != '${match[2]}'`);
+                    isParsingError = true;
                 }
                 reportProgress(currentTestIdParts, (testItem) => {
                     testRun.passed(testItem);
@@ -327,7 +377,8 @@ export class TestExecutable {
             options.env = createEnvForSpawn(envMap);
         }
         const process = spawn(this.absPath, args, options);
-        let stdout, stderr: ReadLine | undefined;
+        let stdout: ReadLine | undefined;
+        let stderr: ReadLine | undefined;
 
         try {
             const stopped = new Promise<number>((resolve, reject) => {
