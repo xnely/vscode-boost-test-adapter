@@ -66,7 +66,16 @@ from the Testing sidebar of VS Code.
      - Take a look at the `Boost.Test Adapter` Output channel for potential issues.
    - Press the reload button at the top of the Testing sidebar.
    - Restart VS Code.
-2. Why is my test-root called "Hello World" (or some other nonsense) in the Testing sidebar?
+2. What is this weird root node in the test tree?
+   - That is your workspace name.
+3. Why does the path of the tests change when I open them?
+   - Tests are not loaded from the test execuatbles immediately. They are loaded only
+     when requested (i.e. when you open them). At that point the Test Module name is fetched
+     from the test executable and it replaces the test exe path.
+     The test exe path is still available from the context menu's `Copy Path` command.
+4. Why is the file system path of my Test Suite point to the *wrong* source file?
+   - Probably because you have the same Test Suite declared in multiple source files.
+5. Why is my test-root called "Hello World" (or some other nonsense) in the Testing sidebar?
    - That is the Boost test module name. It comes from your test executable.
      Usually from a line like this:
      ```
