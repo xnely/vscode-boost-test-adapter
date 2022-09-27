@@ -91,9 +91,10 @@ This extension is based on code from these extensions:
 - https://github.com/newdigate/vscode-boost-test-adapter.git
 
 ## Changelog
-* Update 3.2.x
-  * Add a `Copy Boost.Test ID` conext menu. It allows to copy the Boost test ID (test path) of a
-    test-case or test-suite to the clipboard for [test unit filtering](https://www.boost.org/doc/libs/1_80_0/libs/test/doc/html/boost_test/runtime_config/test_unit_filtering.html).
+* Update 3.2.3
+  * Add `Copy Path` and `Copy Relative Path` commands to the context menu.
+  * Add `Copy Boost.Test ID` command to the conext menu. It allows to copy the Boost test ID (test path) of a
+    test case or test suite to the clipboard for [test unit filtering](https://www.boost.org/doc/libs/1_80_0/libs/test/doc/html/boost_test/runtime_config/test_unit_filtering.html).
   * Bug fixes.
 * Update 3.2.0
   * Use the built-in Test Explorer of VS Code. No need to install the external [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer) extension any more.
