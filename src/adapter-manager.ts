@@ -71,10 +71,10 @@ export class AdapterManager {
     }
 
     async resolveHandler(testItem: vscode.TestItem | undefined): Promise<void> {
-        this.log.info(`Resolving test '${testItem?.id}'`);
         if (testItem === undefined) {
             await this.reloadTests();
         } else {
+            this.log.info(`Resolving test '${testItem?.id}'`);
             const adapter = this.getAdapterOf(testItem);
             if (adapter === undefined) {
                 this.log.bug(`Cannot find adapter for TestItem '${testItem.id}'`);
