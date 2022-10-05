@@ -63,6 +63,7 @@ export class AdapterManager {
 
     async reloadTests(): Promise<void> {
         this.log.info("Reloading tests");
+        this.ctrl.items.replace([]);
         for (const [_, adapter] of this.adapters) {
             await adapter.reload();
             this.ctrl.items.add(adapter.getTestItem());

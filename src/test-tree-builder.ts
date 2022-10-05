@@ -38,6 +38,14 @@ function parseTestModuleLabel(node: Node): string {
     return label.eq;
 }
 
+// Node labels are of this form:
+//
+//  a) node_name|file_path(line_number)
+//  b) node_name|file_path(line_number)|some_other_stuff
+//
+const regexLabelWith2Parts = /^(\w+)\|(.+)\((\d+)\)$/;
+const regexLabelWith3Parts = /^(\w+)\|(.+)\((\d+)\)\|.+$/;
+
 function parseLabel(node: Node): LabelInfo {
     const label = node.attr_list.find(a => a.id === 'label');
 
@@ -45,10 +53,12 @@ function parseLabel(node: Node): LabelInfo {
         throw new Error('Node does not have a "label" attribute');
     }
 
-    const match = /^(\w+)\|(.+)\((\d+)\)$/.exec(label.eq);
-
+    let match = regexLabelWith2Parts.exec(label.eq);
     if (!match) {
-        throw new Error(`Failed to extract label "${label.eq}"`);
+        match = regexLabelWith3Parts.exec(label.eq);
+        if (!match) {
+            throw new Error(`Failed to extract label "${label.eq}"`);
+        }
     }
 
     return <LabelInfo>{

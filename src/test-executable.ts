@@ -87,12 +87,18 @@ export class TestExecutable {
         }
 
         // extract test module information
-        const loadedTestItem = treebuilder.createTestExeTestItem(
-            this.absPath,
-            this.testExeTestItemId,
-            this.cfg.sourcePrefix,
-            graphs,
-            this.ctrl);
+        let loadedTestItem: vscode.TestItem;
+        try {
+            loadedTestItem = treebuilder.createTestExeTestItem(
+                this.absPath,
+                this.testExeTestItemId,
+                this.cfg.sourcePrefix,
+                graphs,
+                this.ctrl);
+        } catch (e) {
+            this.log.exception(e);
+            return false;
+        }
         const children: vscode.TestItem[] = [];
         loadedTestItem.children.forEach((item, _) => {
             children.push(item);
