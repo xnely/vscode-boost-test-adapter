@@ -19,10 +19,21 @@ from the Testing sidebar of VS Code.
 ```json
     "boost-test-adapter-feher.tests": [
         {
-            // Mandatory: Path to test executables. May be absolute or relative paths.
+            // Mandatory
             "testExecutables": [
-                "build/Debug/main_test_1",
-                "build/Debug/main_test_2"
+              {
+                // Mandatory: Path to a test executable. May be absolute or relative path.
+                "path": "build/Debug/main_test_1",
+                // Optional: Show this label in the Testing sidebar instead of the Boost Test module name.
+                "label": "Test 1 (debug)"
+              },
+              {
+                "path": "build/Release/main_test_1",
+                "label": "Test 1 (release)"
+              },
+              {
+                "path": "build/Debug/main_test_2"
+              }
             ],
 
             // Optional: The working directory for the test executables.

@@ -59,10 +59,21 @@
             "description": "Test configuration.",
             "properties": {
               "testExecutables": {
-                "description": "Absolute or relative path to test executables.",
+                "description": "List of test executables.",
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "object",
+                  "description": "A test executable.",
+                  "properties": {
+                    "path": {
+                      "description": "Absolute or relative path to a test executable.",
+                      "type": "string"
+                    },
+                    "label": {
+                      "description": "Show this label in the test explorer UI instead of the Boost Test module name.",
+                      "type": "string"
+                    }
+                  }
                 }
               },
               "debugConfig": {

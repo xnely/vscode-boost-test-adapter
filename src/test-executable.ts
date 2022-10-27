@@ -40,17 +40,27 @@ export class TestExecutable {
 
         this.testItem = this.ctrl.createTestItem(
             this.testExeTestItemId,
-            `${this.cfg.path} (Open to load tests)`,
+            `${this.getTestExeLabel()} (Open to load tests)`,
             vscode.Uri.file(this.absPath));
         // We load the tests from the test exe only when requested.
         this.testItem.canResolveChildren = true;
+    }
+
+    private getTestExeLabel(boostModuleName: string | undefined = undefined) {
+        if (this.cfg.label) {
+            return this.cfg.label;
+        }
+        if (boostModuleName) {
+            return boostModuleName;
+        }
+        return this.cfg.path;
     }
 
     async loadTests(): Promise<void> {
         this.testItem.busy = true;
         const ok = await this.doLoadTests();
         if (!ok) {
-            this.testItem.label = `${this.cfg.path} (Failed to load tests)`;
+            this.testItem.label = `${this.getTestExeLabel()} (Failed to load tests)`;
             this.testItem.children.replace([]);
             this.testItem.canResolveChildren = true;
         }
@@ -103,7 +113,7 @@ export class TestExecutable {
         loadedTestItem.children.forEach((item, _) => {
             children.push(item);
         });
-        this.testItem.label = loadedTestItem.label;
+        this.testItem.label = this.getTestExeLabel(loadedTestItem.label);
         this.testItem.children.replace(children);
         this.testItem.canResolveChildren = false;
 

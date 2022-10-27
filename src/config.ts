@@ -9,6 +9,7 @@ export const BoosTestAdapterConfig = "boost-test-adapter-feher";
 
 export interface TestExe {
     path: string;
+    label?: string;
     debugConfig?: string;
     envFile?: string;
     env?: Map<string, string>;
@@ -42,14 +43,26 @@ export async function getConfig(workspaceFolder: vscode.WorkspaceFolder, log: lo
 
     for (const cfgTest of cfgTests) {
         if (!(cfgTest.testExecutables instanceof Array)) {
-            log.error(`Settings: testExecutables must exist and it must be an array of strings`, true);
+            log.error(`Settings: testExecutables must exist and it must be an array`, true);
             return emptyTestConfig;
         }
 
-        for (const cfgTestExePath of cfgTest.testExecutables) {
+        for (const cfgTestExe of cfgTest.testExecutables) {
+            if (typeof cfgTestExe.path !== 'string') {
+                log.error(`Settings: Test executable path must be a string`, true);
+                return emptyTestConfig;
+            }
             const testExe: TestExe = {
-                path: util.detokenizeVariables(cfgTestExePath)
+                path: util.detokenizeVariables(cfgTestExe.path)
             };
+
+            if (cfgTestExe.label !== undefined) {
+                if (typeof cfgTestExe.label !== 'string') {
+                    log.error(`Settings: Test executable label must be a string`, true);
+                    return emptyTestConfig;
+                }
+                testExe.label = cfgTestExe.label;
+            }
 
             if (cfgTest.debugConfig !== undefined) {
                 if (typeof cfgTest.debugConfig !== 'string') {
