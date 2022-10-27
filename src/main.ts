@@ -3,9 +3,14 @@ import * as logger from './logger';
 import { AdapterManager } from './adapter-manager';
 import * as config from './config';
 
+let log: logger.MyLogger | undefined = undefined;
+
 export async function activate(context: vscode.ExtensionContext) {
-    const log = new logger.MyLogger('Boost.Test Adapter');
-    context.subscriptions.push(log);
+    if (log) {
+        log.bug("The extension is already activated!");
+        return;
+    }
+    log = new logger.MyLogger('Boost.Test Adapter');
     log.info("Extension activated.");
 
     const ctrl = vscode.tests.createTestController(`${config.BoosTestAdapterExtensionName}.test-controller`, 'Boost.Test');
@@ -57,4 +62,12 @@ export async function activate(context: vscode.ExtensionContext) {
         (testItem: vscode.TestItem) => {
             adapterManager.commandCopyBoostTestId(testItem);
         }));
+}
+
+export function deactivate() {
+    if (log) {
+        log.info("Deactivating extension.");
+        log.dispose();
+        log = undefined;
+    }
 }
