@@ -3,7 +3,7 @@ import * as model from './model';
 //
 // IMPORTANT!
 // If you change the format of the IDs then make sure you update the regex for the
-// boost-test-adapter-feher.copyBoostTestId command in package.json.
+// boost-test-adapter-xnely.copyBoostTestId command in package.json.
 //
 
 export function createChildTestId(parentId: string, childId: string) {

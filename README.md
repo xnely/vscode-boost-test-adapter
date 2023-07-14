@@ -17,7 +17,7 @@ from the Testing sidebar of VS Code.
 
 ## Configurations
 ```json
-    "boost-test-adapter-feher.tests": [
+    "boost-test-adapter-xnely.tests": [
         {
             // Mandatory
             "testExecutables": [
@@ -98,6 +98,7 @@ from the Testing sidebar of VS Code.
 
 ## Credits
 This extension is based on code from these extensions:
+- https://github.com/feher/vscode-boost-test-adapter
 - https://github.com/firoorg/vscode-boost-test-adapter
 - https://github.com/newdigate/vscode-boost-test-adapter.git
 

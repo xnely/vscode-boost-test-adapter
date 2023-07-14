@@ -23,10 +23,10 @@ export class TestExecutable {
     runningTests: TestSession[] = [];
     testItem: vscode.TestItem;
 
-    private readonly regexEnterTestSuite = /^(.+): Entering test suite "(\w+)"$/;
-    private readonly regexLeaveTestSuite = /^(.+): Leaving test suite "(\w+)"; testing time: (\d+)(\w+)$/;
-    private readonly regexEnterTestCase = /^(.+): Entering test case "(\w+)"$/;
-    private readonly regexLeaveTestCase = /^(.+): Leaving test case "(\w+)"; testing time: (\d+)(\w+)$/;
+    private readonly regexEnterTestSuite = /^(.+): Entering test suite "([a-zA-Z0-9_<> ]+)"$/;
+    private readonly regexLeaveTestSuite = /^(.+): Leaving test suite "([a-zA-Z0-9_<> ]+)"; testing time: (\d+)([a-zA-Z0-9_<> ]+)$/;
+    private readonly regexEnterTestCase = /^(.+): Entering test case "([a-zA-Z0-9_<> ]+)"$/;
+    private readonly regexLeaveTestCase = /^(.+): Leaving test case "([a-zA-Z0-9_<> ]+)"; testing time: (\d+)([a-zA-Z0-9_<> ]+)$/;
     private readonly regexTestCaseError = /^(.+)\(([0-9]+)\): error: in "([\w\/]+)": (.+)$/;
     private readonly regexTestCaseFatalError = /^(.+)\(([0-9]+)\): fatal error: in "([\w\/]+)": (.+)$/;
 
@@ -349,7 +349,7 @@ export class TestExecutable {
         const boostTestIds = testidutil.createBoostTestIdsFrom(testItems);
         // If there are no valid boost test IDs then we run all the tests.
         if (boostTestIds.length > 0) {
-            args = args.concat(['-t', boostTestIds.join(':')]);
+            args = args.concat(['-t', "'" + boostTestIds.join(":") + "'"]);
             log.info(`Debugging the following tests from ${this.cfg.path}:`);
             for (const boostTestId of boostTestIds) {
                 log.info(boostTestId);
